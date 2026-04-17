@@ -50,19 +50,41 @@ CACHE_FILE = Path("cache.json")
 DEFAULT_CHANNEL = "idfofficial"
 DEFAULT_DATE_FROM = "2023-10-07"
 
-# Fallback axis options if the DB isn't seeded with categories yet. These
-# mirror what the seed script inserts. `run_scrape()` will replace these with
-# the current DB contents so GPT classification stays in sync with /admin/tags.
+# Fallback axis options if the DB isn't seeded with categories yet. `run_scrape()`
+# will replace these with the current DB contents so GPT classification stays in
+# sync with /admin/tags.
+AXIS_KEYS = ("theater", "opponent", "kind", "domain", "posture")
+
 DEFAULT_AXES = {
-    "front": ["Lebanon", "Gaza", "Iran", "Homefront", "Other"],
-    "opponent": ["Hezbollah", "Iran", "Houthi", "Palestinian", "Other"],
-    "type": [
-        "Combat footage", "Aerial strike", "Naval operation",
-        "Ground operation", "Surveillance footage", "Press conference",
-        "Humanitarian", "Intelligence briefing", "Military technology",
-        "Other",
+    "theater": [
+        "Lebanon", "Gaza", "Judea & Samaria", "Iran", "Syria", "Yemen",
+        "Israel-home", "Regional", "Unknown",
+    ],
+    "opponent": [
+        "Hezbollah", "Hamas", "PIJ", "Houthi", "Iran", "Syrian regime",
+        "J&S terror groups", "Multi-actor", "Unknown",
+    ],
+    "kind": [
+        "Aerial strike", "Ground operation", "Naval operation",
+        "Intelligence briefing", "Press conference", "Combat footage",
+        "Humanitarian", "Homefront / civil defense", "Operational aftermath",
+        "Weapons showcase", "Unknown",
+    ],
+    "domain": ["Air", "Ground", "Sea", "Intelligence", "Multi-domain"],
+    "posture": [
+        "Offensive", "Defensive", "Homefront protection",
+        "Intelligence", "Informational",
     ],
 }
+
+# Flag columns (BOOLEAN on the videos table). The GPT JSON response mirrors
+# these keys 1:1 so the DB write below stays dead simple.
+FLAG_KEYS = (
+    "is_graphic",
+    "involves_hostages",
+    "involves_ceasefire_violation",
+    "has_sensitive_content",
+)
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -119,19 +141,29 @@ def db_connect():
 
 
 def read_axes_from_db(conn) -> dict[str, list[str]]:
+    """Return the category labels for each current axis, keyed by axis name.
+
+    Prefers rows from `categories` but falls back to `DEFAULT_AXES` for any
+    axis that hasn't been seeded yet, so GPT always has something sensible
+    to pick from. Ignores legacy `front` / `type` rows during migration.
+    """
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
-            "SELECT axis, label FROM categories ORDER BY axis, sort_order, label"
+            "SELECT axis, label FROM categories "
+            "WHERE axis = ANY(%s) "
+            "ORDER BY axis, sort_order, label",
+            (list(AXIS_KEYS),),
         )
         rows = cur.fetchall()
     by_axis: dict[str, list[str]] = {}
     for r in rows:
         by_axis.setdefault(r["axis"], []).append(r["label"])
-    # Ensure each axis has at least "Other" — GPT needs a fallback option.
-    for axis in ("front", "opponent", "type"):
+    for axis in AXIS_KEYS:
         labels = by_axis.get(axis) or DEFAULT_AXES[axis][:]
-        if "Other" not in labels:
-            labels.append("Other")
+        # Every axis needs an "Unknown"-style escape hatch so GPT never has to
+        # hallucinate a value. DEFAULT_AXES already includes these.
+        if "Unknown" in DEFAULT_AXES[axis] and "Unknown" not in labels:
+            labels.append("Unknown")
         by_axis[axis] = labels
     return by_axis
 
@@ -171,31 +203,56 @@ def record_run_end(
 
 def upsert_video(conn, row: dict) -> str:
     """Insert a row, or update if slug already exists.
-    Returns 'inserted' or 'updated'."""
+    Returns 'inserted' or 'updated'.
+
+    Writes all five current axes + four boolean flags, and keeps the legacy
+    `front` / `type` columns in sync with theater / kind so the old UI
+    (if still queried) doesn't show NULLs mid-migration.
+    """
     with conn.cursor() as cur:
         cur.execute(
             """
             INSERT INTO videos (
               slug, id, message_id, date, bitly_url, resolved_url, video_file,
-              message_text, front, opponent, type,
-              front_slug, opponent_slug, type_slug
+              message_text,
+              theater, opponent, kind, domain, posture,
+              theater_slug, opponent_slug, kind_slug, domain_slug, posture_slug,
+              is_graphic, involves_hostages, involves_ceasefire_violation,
+              has_sensitive_content,
+              front, type, front_slug, type_slug
             ) VALUES (
               %(slug)s, %(id)s, %(message_id)s, %(date)s, %(bitly_url)s,
               %(resolved_url)s, %(video_file)s, %(message_text)s,
-              %(front)s, %(opponent)s, %(type)s,
-              %(front_slug)s, %(opponent_slug)s, %(type_slug)s
+              %(theater)s, %(opponent)s, %(kind)s, %(domain)s, %(posture)s,
+              %(theater_slug)s, %(opponent_slug)s, %(kind_slug)s,
+              %(domain_slug)s, %(posture_slug)s,
+              %(is_graphic)s, %(involves_hostages)s,
+              %(involves_ceasefire_violation)s, %(has_sensitive_content)s,
+              %(theater)s, %(kind)s, %(theater_slug)s, %(kind_slug)s
             )
             ON CONFLICT (slug) DO UPDATE SET
               date = EXCLUDED.date,
               resolved_url = EXCLUDED.resolved_url,
               video_file = EXCLUDED.video_file,
               message_text = EXCLUDED.message_text,
-              front = EXCLUDED.front,
+              theater = EXCLUDED.theater,
               opponent = EXCLUDED.opponent,
-              type = EXCLUDED.type,
-              front_slug = EXCLUDED.front_slug,
+              kind = EXCLUDED.kind,
+              domain = EXCLUDED.domain,
+              posture = EXCLUDED.posture,
+              theater_slug = EXCLUDED.theater_slug,
               opponent_slug = EXCLUDED.opponent_slug,
-              type_slug = EXCLUDED.type_slug,
+              kind_slug = EXCLUDED.kind_slug,
+              domain_slug = EXCLUDED.domain_slug,
+              posture_slug = EXCLUDED.posture_slug,
+              is_graphic = EXCLUDED.is_graphic,
+              involves_hostages = EXCLUDED.involves_hostages,
+              involves_ceasefire_violation = EXCLUDED.involves_ceasefire_violation,
+              has_sensitive_content = EXCLUDED.has_sensitive_content,
+              front = EXCLUDED.theater,
+              type = EXCLUDED.kind,
+              front_slug = EXCLUDED.theater_slug,
+              type_slug = EXCLUDED.kind_slug,
               updated_at = now()
             RETURNING (xmax = 0) AS inserted
             """,
@@ -394,9 +451,21 @@ def categorize(
     cache: dict,
     cache_key: str,
 ) -> dict:
-    # Cache key embeds the full axes list so re-running after admin edits the
-    # tag set invalidates old entries automatically.
-    full_key = f"{cache_key}|{json.dumps(axes, sort_keys=True)}"
+    """Classify a message into the five axes + four boolean flags.
+
+    Returns a flat dict shaped like:
+      {
+        "theater": "Lebanon", "opponent": "Hezbollah",
+        "kind": "Aerial strike", "domain": "Air", "posture": "Offensive",
+        "is_graphic": False, "involves_hostages": False,
+        "involves_ceasefire_violation": False,
+        "has_sensitive_content": False,
+      }
+
+    Cache key embeds axes so re-running after /admin/tags edits invalidates
+    old entries automatically.
+    """
+    full_key = f"{cache_key}|v2|{json.dumps(axes, sort_keys=True)}"
     if full_key in cache["categories"]:
         return cache["categories"][full_key]
 
@@ -407,35 +476,57 @@ def categorize(
         f'  "{axis}": one of [{", ".join(opts)}]' for axis, opts in axes.items()
     )
 
+    system = (
+        "You are a military content classifier for IDF (Israel Defense "
+        "Forces) videos, indexing for a newsroom.\n\n"
+        "Classify along FIVE axes. For each axis, pick exactly ONE value "
+        "from the allowed options:\n"
+        f"{axes_description}\n\n"
+        "Also set FOUR booleans:\n"
+        '  "is_graphic": true if the content depicts clearly graphic '
+        "violence, corpses, or injuries.\n"
+        '  "involves_hostages": true if the message mentions hostages, '
+        "abductees, captives, or hostage negotiations.\n"
+        '  "involves_ceasefire_violation": true if the message describes a '
+        "ceasefire breach, violation of truce, or fire after a ceasefire.\n"
+        '  "has_sensitive_content": true if the video likely needs a '
+        "content warning for newsroom use (children injured, strong "
+        "language, identifiable casualties, etc.).\n\n"
+        "Return ONLY valid JSON with keys: theater, opponent, kind, domain, "
+        "posture, is_graphic, involves_hostages, "
+        "involves_ceasefire_violation, has_sensitive_content."
+    )
+
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         temperature=0,
+        response_format={"type": "json_object"},
         messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are a military content classifier for IDF (Israel Defense Forces) videos.\n"
-                    "Classify the following content along THREE axes. For each axis, pick "
-                    "exactly ONE value from the allowed options.\n\n"
-                    f"{axes_description}\n\n"
-                    "Return ONLY valid JSON with keys: front, opponent, type.\n"
-                    "Example: {\"front\": \"Lebanon\", \"opponent\": \"Hezbollah\", \"type\": \"Aerial strike\"}"
-                ),
-            },
+            {"role": "system", "content": system},
             {"role": "user", "content": content[:4000]},
         ],
     )
 
     raw = response.choices[0].message.content.strip()
     try:
-        result = json.loads(raw)
+        parsed = json.loads(raw)
     except json.JSONDecodeError:
-        result = {"front": "Other", "opponent": "Other", "type": "Other"}
+        parsed = {}
 
+    result: dict = {}
     for axis, opts in axes.items():
         valid_lower = {o.lower(): o for o in opts}
-        val = str(result.get(axis, "Other")).lower()
-        result[axis] = valid_lower.get(val, "Other")
+        val = str(parsed.get(axis, "")).strip().lower()
+        result[axis] = valid_lower.get(val, opts[-1])  # last option is "Unknown"-ish
+
+    for flag in FLAG_KEYS:
+        v = parsed.get(flag)
+        if isinstance(v, bool):
+            result[flag] = v
+        elif isinstance(v, str):
+            result[flag] = v.strip().lower() in ("true", "yes", "1")
+        else:
+            result[flag] = False
 
     cache["categories"][full_key] = result
     save_cache(cache)
@@ -531,21 +622,26 @@ def run_scrape(args) -> None:
                         "resolved_url": resolved,
                         "video_file": video_file,
                         "message_text": msg["text"],
-                        "front": cats["front"],
-                        "opponent": cats["opponent"],
-                        "type": cats["type"],
-                        "front_slug": slugify(cats["front"]),
-                        "opponent_slug": slugify(cats["opponent"]),
-                        "type_slug": slugify(cats["type"]),
                     }
+                    for axis in AXIS_KEYS:
+                        row[axis] = cats[axis]
+                        row[f"{axis}_slug"] = slugify(cats[axis])
+                    for flag in FLAG_KEYS:
+                        row[flag] = bool(cats[flag])
+
                     status = upsert_video(conn, row)
                     if status == "inserted":
                         added += 1
                     else:
                         updated += 1
                     already.add(bitly_url)
+                    flag_bits = "".join(
+                        "1" if cats[f] else "0" for f in FLAG_KEYS
+                    )
                     print(
-                        f"  {status} · Front: {cats['front']} | Opponent: {cats['opponent']} | Type: {cats['type']}"
+                        f"  {status} · {cats['theater']} / {cats['opponent']} / "
+                        f"{cats['kind']} · {cats['domain']} · {cats['posture']} "
+                        f"· flags={flag_bits}"
                     )
 
             record_run_end(conn, run_id, "success", added=added, updated=updated)

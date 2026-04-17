@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { sql } from "@/lib/db";
+import { AXIS_CONFIG, PRIMARY_FILTER_AXES } from "@/lib/axes-config";
+import type { Axis } from "@/lib/types";
 import { getLibraryStats } from "@/lib/videos";
 
 const PAGE_SIZE = 20;
@@ -8,17 +10,14 @@ const PAGE_SIZE = 20;
 type Row = {
   slug: string;
   date: string;
-  front: string;
+  theater: string;
   opponent: string;
-  type: string;
+  kind: string;
   message_text: string;
 };
 
-type Search = {
+type Search = Partial<Record<Axis, string>> & {
   q?: string;
-  front?: string;
-  opponent?: string;
-  type?: string;
   page?: string;
 };
 
@@ -29,33 +28,39 @@ async function loadVideos(search: Search): Promise<{
   totalPages: number;
 }> {
   const page = Math.max(1, parseInt(search.page ?? "1", 10) || 1);
-
   const q = (search.q ?? "").trim();
-  const front = (search.front ?? "").trim();
-  const opponent = (search.opponent ?? "").trim();
-  const type = (search.type ?? "").trim();
-
   const like = q ? `%${q}%` : null;
 
-  const rows = (await sql()`
-    SELECT slug, date, front, opponent, type, message_text
-    FROM videos
-    WHERE (${like}::text IS NULL OR message_text ILIKE ${like})
-      AND (${front || null}::text IS NULL OR front_slug = ${front || null})
-      AND (${opponent || null}::text IS NULL OR opponent_slug = ${opponent || null})
-      AND (${type || null}::text IS NULL OR type_slug = ${type || null})
-    ORDER BY date DESC
-    LIMIT ${PAGE_SIZE}
-    OFFSET ${(page - 1) * PAGE_SIZE}
-  `) as unknown as Row[];
+  // Build WHERE dynamically so a user can filter by any combination of axes.
+  const whereParts: string[] = [
+    `(${like === null ? "TRUE" : "message_text ILIKE $1"})`,
+  ];
+  const params: unknown[] = [];
+  if (like !== null) params.push(like);
 
-  const totalRows = (await sql()`
-    SELECT COUNT(*)::int AS c FROM videos
-    WHERE (${like}::text IS NULL OR message_text ILIKE ${like})
-      AND (${front || null}::text IS NULL OR front_slug = ${front || null})
-      AND (${opponent || null}::text IS NULL OR opponent_slug = ${opponent || null})
-      AND (${type || null}::text IS NULL OR type_slug = ${type || null})
-  `) as unknown as { c: number }[];
+  for (const axis of PRIMARY_FILTER_AXES) {
+    const slug = (search[axis] ?? "").trim();
+    if (!slug) continue;
+    params.push(slug);
+    whereParts.push(`${AXIS_CONFIG[axis].slugColumn} = $${params.length}`);
+  }
+
+  const where = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
+
+  const listParams = [...params, PAGE_SIZE, (page - 1) * PAGE_SIZE];
+  const rows = (await sql().query(
+    `SELECT slug, date, theater, opponent, kind, message_text
+       FROM videos
+       ${where}
+       ORDER BY date DESC
+       LIMIT $${listParams.length - 1} OFFSET $${listParams.length}`,
+    listParams,
+  )) as unknown as Row[];
+
+  const totalRows = (await sql().query(
+    `SELECT COUNT(*)::int AS c FROM videos ${where}`,
+    params,
+  )) as unknown as { c: number }[];
 
   const total = totalRows[0]?.c ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -80,9 +85,9 @@ export default async function AdminVideosPage({
   };
   const search: Search = {
     q: g("q"),
-    front: g("front"),
+    theater: g("theater"),
     opponent: g("opponent"),
-    type: g("type"),
+    kind: g("kind"),
     page: g("page"),
   };
   const saved = g("saved") === "1";
@@ -96,9 +101,10 @@ export default async function AdminVideosPage({
   const qs = (extra: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
     if (search.q) p.set("q", search.q);
-    if (search.front) p.set("front", search.front);
-    if (search.opponent) p.set("opponent", search.opponent);
-    if (search.type) p.set("type", search.type);
+    for (const axis of PRIMARY_FILTER_AXES) {
+      const v = search[axis];
+      if (v) p.set(axis, v);
+    }
     for (const [k, v] of Object.entries(extra)) {
       if (v) p.set(k, v);
       else p.delete(k);
@@ -140,42 +146,21 @@ export default async function AdminVideosPage({
           placeholder="Search message text…"
           className="rounded-xl border border-[var(--border)] bg-[var(--background-elev)] px-3 py-2.5 text-[13px] text-[var(--foreground)] outline-none transition focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)] md:col-span-2"
         />
-        <select
-          name="front"
-          defaultValue={search.front ?? ""}
-          className="rounded-xl border border-[var(--border)] bg-[var(--background-elev)] px-3 py-2.5 text-[13px] text-[var(--foreground)] outline-none"
-        >
-          <option value="">Any front</option>
-          {stats.byFront.map((x) => (
-            <option key={x.slug} value={x.slug}>
-              {x.label}
-            </option>
-          ))}
-        </select>
-        <select
-          name="opponent"
-          defaultValue={search.opponent ?? ""}
-          className="rounded-xl border border-[var(--border)] bg-[var(--background-elev)] px-3 py-2.5 text-[13px] text-[var(--foreground)] outline-none"
-        >
-          <option value="">Any opponent</option>
-          {stats.byOpponent.map((x) => (
-            <option key={x.slug} value={x.slug}>
-              {x.label}
-            </option>
-          ))}
-        </select>
-        <select
-          name="type"
-          defaultValue={search.type ?? ""}
-          className="rounded-xl border border-[var(--border)] bg-[var(--background-elev)] px-3 py-2.5 text-[13px] text-[var(--foreground)] outline-none"
-        >
-          <option value="">Any type</option>
-          {stats.byType.map((x) => (
-            <option key={x.slug} value={x.slug}>
-              {x.label}
-            </option>
-          ))}
-        </select>
+        {PRIMARY_FILTER_AXES.map((axis) => (
+          <select
+            key={axis}
+            name={axis}
+            defaultValue={search[axis] ?? ""}
+            className="rounded-xl border border-[var(--border)] bg-[var(--background-elev)] px-3 py-2.5 text-[13px] text-[var(--foreground)] outline-none"
+          >
+            <option value="">Any {AXIS_CONFIG[axis].label.toLowerCase()}</option>
+            {stats.by[axis].map((x) => (
+              <option key={x.slug} value={x.slug}>
+                {x.label}
+              </option>
+            ))}
+          </select>
+        ))}
         <div className="md:col-span-5 flex gap-2">
           <button
             type="submit"
@@ -206,7 +191,7 @@ export default async function AdminVideosPage({
                 {excerpt(r.message_text)}
               </p>
               <p className="mt-1 font-mono text-[11px] text-[var(--muted)]">
-                {r.front} · {r.opponent} · {r.type}
+                {r.theater} · {r.opponent} · {r.kind}
               </p>
             </div>
             <div className="flex shrink-0 gap-2">

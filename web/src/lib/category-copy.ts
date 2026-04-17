@@ -1,10 +1,11 @@
 import type { Axis } from "./types";
+import { AXIS_CONFIG } from "./axes-config";
 import { sql } from "./db";
 
 export type CategoryCopy = {
-  /** Short, two-to-four-word positioning line shown as an eyebrow. */
+  /** Short positioning line shown as an eyebrow. */
   tagline: string;
-  /** One or two sentences of descriptive context for the category. */
+  /** One or two sentences of descriptive context. */
   intro: string;
 };
 
@@ -17,23 +18,11 @@ export type CategoryRow = {
 };
 
 function fallbackCopy(axis: Axis, label: string): CategoryCopy {
-  switch (axis) {
-    case "front":
-      return {
-        tagline: "Theater",
-        intro: `Clips tagged to the ${label} theater in the IDF video library.`,
-      };
-    case "opponent":
-      return {
-        tagline: "Opposing actor",
-        intro: `Footage tagged to ${label} as the opposing actor in the IDF video library.`,
-      };
-    case "type":
-      return {
-        tagline: "Footage type",
-        intro: `Clips tagged as ${label.toLowerCase()} in the IDF video library.`,
-      };
-  }
+  const cfg = AXIS_CONFIG[axis];
+  return {
+    tagline: cfg.label,
+    intro: `Clips tagged "${label}" under ${cfg.label.toLowerCase()} in the IDF video library.`,
+  };
 }
 
 export async function getAllCategories(): Promise<CategoryRow[]> {

@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { connection } from "next/server";
 import { getSiteUrl } from "@/lib/site";
 import { AXES } from "@/lib/types";
-import { getAllVideos } from "@/lib/videos";
+import { getAllVideos, getSlugForAxis } from "@/lib/videos";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   await connection();
@@ -28,12 +28,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const pillarSeen = new Set<string>();
   for (const v of videos) {
     for (const axis of AXES) {
-      const slug =
-        axis === "front"
-          ? v.frontSlug
-          : axis === "opponent"
-            ? v.opponentSlug
-            : v.typeSlug;
+      const slug = getSlugForAxis(v, axis);
       const key = `${axis}:${slug}`;
       if (pillarSeen.has(key)) continue;
       pillarSeen.add(key);

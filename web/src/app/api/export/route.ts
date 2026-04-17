@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { getVideoBySlug } from "@/lib/videos";
 
 const CSV_HEADER =
-  "message_id,date,bitly_url,resolved_url,video_file,message_text,front,opponent,type";
+  "message_id,date,bitly_url,resolved_url,video_file,message_text," +
+  "theater,opponent,kind,domain,posture," +
+  "is_graphic,involves_hostages,involves_ceasefire_violation,has_sensitive_content";
 
 function escapeField(s: string): string {
   if (/[",\n\r]/.test(s)) {
@@ -34,9 +36,15 @@ export async function POST(req: Request) {
       v.resolved_url,
       v.video_file,
       v.message_text,
-      v.front,
+      v.theater,
       v.opponent,
-      v.type,
+      v.kind,
+      v.domain,
+      v.posture,
+      v.isGraphic ? "1" : "0",
+      v.involvesHostages ? "1" : "0",
+      v.involvesCeasefireViolation ? "1" : "0",
+      v.hasSensitiveContent ? "1" : "0",
     ].map(escapeField);
     lines.push(row.join(","));
   }

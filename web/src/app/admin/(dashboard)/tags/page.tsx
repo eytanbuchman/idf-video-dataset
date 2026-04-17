@@ -2,18 +2,20 @@ import { connection } from "next/server";
 import { sql } from "@/lib/db";
 import { deleteCategory, upsertCategory } from "@/lib/admin-actions";
 import { getAllCategories, type CategoryRow } from "@/lib/category-copy";
+import { AXES, AXIS_CONFIG } from "@/lib/axes-config";
 import type { Axis } from "@/lib/types";
 
 type CountRow = { axis: Axis; slug: string; c: number };
 
 async function getCategoryCounts(): Promise<Map<string, number>> {
-  const rows = (await sql()`
-    SELECT 'front'::text AS axis, front_slug AS slug, COUNT(*)::int AS c FROM videos GROUP BY front_slug
-    UNION ALL
-    SELECT 'opponent'::text, opponent_slug, COUNT(*)::int FROM videos GROUP BY opponent_slug
-    UNION ALL
-    SELECT 'type'::text, type_slug, COUNT(*)::int FROM videos GROUP BY type_slug
-  `) as unknown as CountRow[];
+  // Union one SELECT per axis so we get a full slug->count map.
+  const fragments = AXES.map((axis) => {
+    const cfg = AXIS_CONFIG[axis];
+    return `SELECT '${axis}'::text AS axis, ${cfg.slugColumn} AS slug, COUNT(*)::int AS c
+            FROM videos GROUP BY ${cfg.slugColumn}`;
+  });
+  const query = fragments.join(" UNION ALL ");
+  const rows = (await sql().query(query)) as unknown as CountRow[];
   const m = new Map<string, number>();
   for (const r of rows) m.set(`${r.axis}:${r.slug}`, r.c);
   return m;
@@ -41,10 +43,17 @@ export default async function AdminTagsPage({
   ]);
 
   const grouped: Record<Axis, CategoryRow[]> = {
-    front: cats.filter((c) => c.axis === "front"),
-    opponent: cats.filter((c) => c.axis === "opponent"),
-    type: cats.filter((c) => c.axis === "type"),
+    theater: [],
+    opponent: [],
+    kind: [],
+    domain: [],
+    posture: [],
   };
+  for (const c of cats) {
+    if (c.axis in grouped) {
+      grouped[c.axis as Axis].push(c);
+    }
+  }
 
   return (
     <div className="space-y-12">
@@ -75,11 +84,11 @@ export default async function AdminTagsPage({
         </div>
       )}
 
-      {(["front", "opponent", "type"] as Axis[]).map((axis) => (
+      {AXES.map((axis) => (
         <section key={axis}>
           <div className="mb-4 flex items-baseline justify-between">
             <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
-              {axisLabel(axis)}
+              {AXIS_CONFIG[axis].label}
             </h2>
             <p className="text-[12px] text-[var(--muted)]">
               {grouped[axis].length} tags
@@ -157,14 +166,13 @@ export default async function AdminTagsPage({
               );
             })}
 
-            {/* Add new tag */}
             <form
               action={upsertCategory}
               className="rounded-2xl border border-dashed border-[var(--border-strong)] bg-[var(--surface)] p-5"
             >
               <input type="hidden" name="axis" value={axis} />
               <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">
-                Add new {axis} tag
+                Add new {AXIS_CONFIG[axis].label.toLowerCase()} tag
               </p>
               <div className="mt-3 grid gap-3 md:grid-cols-2">
                 <label className="flex flex-col gap-1">
@@ -211,8 +219,4 @@ export default async function AdminTagsPage({
       ))}
     </div>
   );
-}
-
-function axisLabel(axis: Axis): string {
-  return axis === "front" ? "Fronts" : axis === "opponent" ? "Opponents" : "Footage types";
 }

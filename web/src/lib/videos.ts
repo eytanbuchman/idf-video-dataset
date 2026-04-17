@@ -1,9 +1,9 @@
 import type { Axis, VideoRecord } from "./types";
-import { AXES } from "./types";
+import { AXES, AXIS_CONFIG } from "./types";
 import { sql } from "./db";
 
-// Kept for api compatibility with admin-actions / api routes that reference
-// these symbols. Pages now render dynamically, so there's nothing to tag.
+// Kept for api compatibility with admin-actions / api routes. Pages render
+// dynamically, so there's nothing to tag — these are stubs.
 export const CACHE_TAG_VIDEOS = "videos";
 export const CACHE_TAG_CATEGORIES = "categories";
 
@@ -16,12 +16,22 @@ type VideoRow = {
   resolved_url: string;
   video_file: string;
   message_text: string;
-  front: string;
+
+  theater: string;
+  theater_slug: string;
   opponent: string;
-  type: string;
-  front_slug: string;
   opponent_slug: string;
-  type_slug: string;
+  kind: string;
+  kind_slug: string;
+  domain: string;
+  domain_slug: string;
+  posture: string;
+  posture_slug: string;
+
+  is_graphic: boolean;
+  involves_hostages: boolean;
+  involves_ceasefire_violation: boolean;
+  has_sensitive_content: boolean;
 };
 
 function mapRow(r: VideoRow): VideoRecord {
@@ -36,24 +46,33 @@ function mapRow(r: VideoRow): VideoRecord {
     resolved_url: r.resolved_url ?? "",
     video_file: r.video_file ?? "",
     message_text: r.message_text ?? "",
-    front: r.front ?? "Unknown",
+    theater: r.theater ?? "Unknown",
+    theaterSlug: r.theater_slug ?? "unknown",
     opponent: r.opponent ?? "Unknown",
-    type: r.type ?? "Unknown",
-    frontSlug: r.front_slug ?? "unknown",
     opponentSlug: r.opponent_slug ?? "unknown",
-    typeSlug: r.type_slug ?? "unknown",
+    kind: r.kind ?? "Unknown",
+    kindSlug: r.kind_slug ?? "unknown",
+    domain: r.domain ?? "Multi-domain",
+    domainSlug: r.domain_slug ?? "multi-domain",
+    posture: r.posture ?? "Informational",
+    postureSlug: r.posture_slug ?? "informational",
+    isGraphic: Boolean(r.is_graphic),
+    involvesHostages: Boolean(r.involves_hostages),
+    involvesCeasefireViolation: Boolean(r.involves_ceasefire_violation),
+    hasSensitiveContent: Boolean(r.has_sensitive_content),
   };
 }
 
 // ---------------------------------------------------------------------------
-// Data accessors (cached, tagged)
+// Data accessors
 // ---------------------------------------------------------------------------
 
 export async function getAllVideos(): Promise<VideoRecord[]> {
   const rows = (await sql()`
-    SELECT slug, id, message_id, date, bitly_url, resolved_url, video_file,
-           message_text, front, opponent, type,
-           front_slug, opponent_slug, type_slug
+    SELECT slug, id, message_id, date, bitly_url, resolved_url, video_file, message_text,
+           theater, theater_slug, opponent, opponent_slug, kind, kind_slug,
+           domain, domain_slug, posture, posture_slug,
+           is_graphic, involves_hostages, involves_ceasefire_violation, has_sensitive_content
     FROM videos
     ORDER BY date DESC
   `) as unknown as VideoRow[];
@@ -64,9 +83,10 @@ export async function getVideoBySlug(
   slug: string,
 ): Promise<VideoRecord | undefined> {
   const rows = (await sql()`
-    SELECT slug, id, message_id, date, bitly_url, resolved_url, video_file,
-           message_text, front, opponent, type,
-           front_slug, opponent_slug, type_slug
+    SELECT slug, id, message_id, date, bitly_url, resolved_url, video_file, message_text,
+           theater, theater_slug, opponent, opponent_slug, kind, kind_slug,
+           domain, domain_slug, posture, posture_slug,
+           is_graphic, involves_hostages, involves_ceasefire_violation, has_sensitive_content
     FROM videos WHERE slug = ${slug} LIMIT 1
   `) as unknown as VideoRow[];
   if (!rows[0]) return undefined;
@@ -81,45 +101,38 @@ export async function getAllVideoSlugs(): Promise<{ slug: string }[]> {
 }
 
 // ---------------------------------------------------------------------------
-// Pure helpers (no I/O)
+// Axis-aware helpers (no I/O)
 // ---------------------------------------------------------------------------
 
-export function isAxis(s: string): s is Axis {
-  return AXES.includes(s as Axis);
-}
-
-export function axisLabel(axis: Axis): string {
-  switch (axis) {
-    case "front":
-      return "Theater / front";
-    case "opponent":
-      return "Opponent";
-    case "type":
-      return "Footage type";
-    default:
-      return axis;
-  }
-}
+export { axisLabel, isAxis } from "./types";
 
 export function getSlugForAxis(v: VideoRecord, axis: Axis): string {
   switch (axis) {
-    case "front":
-      return v.frontSlug;
+    case "theater":
+      return v.theaterSlug;
     case "opponent":
       return v.opponentSlug;
-    case "type":
-      return v.typeSlug;
+    case "kind":
+      return v.kindSlug;
+    case "domain":
+      return v.domainSlug;
+    case "posture":
+      return v.postureSlug;
   }
 }
 
 export function getLabelForAxis(v: VideoRecord, axis: Axis): string {
   switch (axis) {
-    case "front":
-      return v.front;
+    case "theater":
+      return v.theater;
     case "opponent":
       return v.opponent;
-    case "type":
-      return v.type;
+    case "kind":
+      return v.kind;
+    case "domain":
+      return v.domain;
+    case "posture":
+      return v.posture;
   }
 }
 
@@ -127,49 +140,41 @@ export function getLabelForAxis(v: VideoRecord, axis: Axis): string {
 // Library stats (rollups across the dataset)
 // ---------------------------------------------------------------------------
 
+export type AxisRollup = { label: string; slug: string; count: number }[];
+
 export type LibraryStats = {
   total: number;
   dateMin: string | null;
   dateMax: string | null;
-  byFront: { label: string; slug: string; count: number }[];
-  byOpponent: { label: string; slug: string; count: number }[];
-  byType: { label: string; slug: string; count: number }[];
+  by: Record<Axis, AxisRollup>;
+  flags: {
+    isGraphic: number;
+    involvesHostages: number;
+    involvesCeasefireViolation: number;
+    hasSensitiveContent: number;
+  };
 };
 
-async function rollupAxis(
-  axis: Axis,
-): Promise<{ label: string; slug: string; count: number }[]> {
-  const slugCol =
-    axis === "front"
-      ? "front_slug"
-      : axis === "opponent"
-        ? "opponent_slug"
-        : "type_slug";
-  const labelCol = axis;
-
-  // Neon `sql` template can't interpolate identifiers. Switch on axis.
-  let rows: { label: string; slug: string; count: string | number }[];
-  if (axis === "front") {
-    rows = (await sql()`
-      SELECT front AS label, front_slug AS slug, COUNT(*)::int AS count
-      FROM videos GROUP BY front, front_slug ORDER BY count DESC
-    `) as unknown as typeof rows;
-  } else if (axis === "opponent") {
-    rows = (await sql()`
-      SELECT opponent AS label, opponent_slug AS slug, COUNT(*)::int AS count
-      FROM videos GROUP BY opponent, opponent_slug ORDER BY count DESC
-    `) as unknown as typeof rows;
-  } else {
-    rows = (await sql()`
-      SELECT type AS label, type_slug AS slug, COUNT(*)::int AS count
-      FROM videos GROUP BY type, type_slug ORDER BY count DESC
-    `) as unknown as typeof rows;
-  }
-  void slugCol;
-  void labelCol;
+async function rollupAxis(axis: Axis): Promise<AxisRollup> {
+  const cfg = AXIS_CONFIG[axis];
+  // `cfg.valueColumn` / `cfg.slugColumn` come from our own static config so
+  // it's safe to inline into the SQL here; they are never user input.
+  const q = `
+    SELECT ${cfg.valueColumn} AS label,
+           ${cfg.slugColumn}  AS slug,
+           COUNT(*)::int      AS count
+      FROM videos
+     GROUP BY ${cfg.valueColumn}, ${cfg.slugColumn}
+     ORDER BY count DESC
+  `;
+  const rows = (await sql().query(q)) as unknown as {
+    label: string;
+    slug: string;
+    count: string | number;
+  }[];
   return rows.map((r) => ({
-    label: r.label,
-    slug: r.slug,
+    label: r.label ?? "Unknown",
+    slug: r.slug ?? "unknown",
     count: typeof r.count === "string" ? Number(r.count) : r.count,
   }));
 }
@@ -177,25 +182,48 @@ async function rollupAxis(
 export async function getLibraryStats(): Promise<LibraryStats> {
   const totalsRow = (await sql()`
     SELECT COUNT(*)::int AS total,
-           MIN(date) AS date_min,
-           MAX(date) AS date_max
+           MIN(date)     AS date_min,
+           MAX(date)     AS date_max,
+           COUNT(*) FILTER (WHERE is_graphic)::int                   AS c_graphic,
+           COUNT(*) FILTER (WHERE involves_hostages)::int            AS c_hostages,
+           COUNT(*) FILTER (WHERE involves_ceasefire_violation)::int AS c_ceasefire,
+           COUNT(*) FILTER (WHERE has_sensitive_content)::int        AS c_sensitive
     FROM videos
-  `) as unknown as { total: number; date_min: string | null; date_max: string | null }[];
+  `) as unknown as {
+    total: number;
+    date_min: string | null;
+    date_max: string | null;
+    c_graphic: number;
+    c_hostages: number;
+    c_ceasefire: number;
+    c_sensitive: number;
+  }[];
 
-  const first = totalsRow[0] ?? { total: 0, date_min: null, date_max: null };
+  const first = totalsRow[0] ?? {
+    total: 0,
+    date_min: null,
+    date_max: null,
+    c_graphic: 0,
+    c_hostages: 0,
+    c_ceasefire: 0,
+    c_sensitive: 0,
+  };
 
-  const [byFront, byOpponent, byType] = await Promise.all([
-    rollupAxis("front"),
-    rollupAxis("opponent"),
-    rollupAxis("type"),
-  ]);
+  const rollups = await Promise.all(AXES.map((axis) => rollupAxis(axis)));
+  const by = Object.fromEntries(
+    AXES.map((axis, i) => [axis, rollups[i]]),
+  ) as Record<Axis, AxisRollup>;
 
   return {
     total: first.total,
     dateMin: first.date_min,
     dateMax: first.date_max,
-    byFront,
-    byOpponent,
-    byType,
+    by,
+    flags: {
+      isGraphic: first.c_graphic,
+      involvesHostages: first.c_hostages,
+      involvesCeasefireViolation: first.c_ceasefire,
+      hasSensitiveContent: first.c_sensitive,
+    },
   };
 }

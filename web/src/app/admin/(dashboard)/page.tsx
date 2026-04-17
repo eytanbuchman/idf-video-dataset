@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { sql } from "@/lib/db";
+import { AXES, AXIS_CONFIG } from "@/lib/axes-config";
 import { getLibraryStats } from "@/lib/videos";
 
 type RunRow = {
@@ -59,16 +60,29 @@ export default async function AdminHome() {
         <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
           Library at a glance
         </h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <Stat label="Videos" value={stats.total.toLocaleString()} />
-          <Stat label="Theaters" value={stats.byFront.length.toString()} />
-          <Stat label="Opponents" value={stats.byOpponent.length.toString()} />
-          <Stat label="Footage types" value={stats.byType.length.toString()} />
+          {AXES.map((axis) => (
+            <Stat
+              key={axis}
+              label={AXIS_CONFIG[axis].label}
+              value={stats.by[axis].length.toString()}
+            />
+          ))}
         </div>
         <p className="mt-3 text-[13px] text-[var(--muted)]">
           Range: {stats.dateMin?.slice(0, 10) ?? "—"} →{" "}
           {stats.dateMax?.slice(0, 10) ?? "—"}
         </p>
+        <div className="mt-4 flex flex-wrap gap-2 text-[12px] text-[var(--muted-strong)]">
+          <FlagPill label="Graphic" n={stats.flags.isGraphic} />
+          <FlagPill label="Hostage-related" n={stats.flags.involvesHostages} />
+          <FlagPill
+            label="Ceasefire violation"
+            n={stats.flags.involvesCeasefireViolation}
+          />
+          <FlagPill label="Sensitive" n={stats.flags.hasSensitiveContent} />
+        </div>
       </section>
 
       <section>
@@ -126,6 +140,14 @@ function Stat({ label, value }: { label: string; value: string }) {
         {value}
       </p>
     </div>
+  );
+}
+
+function FlagPill({ label, n }: { label: string; n: number }) {
+  return (
+    <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1">
+      {label}: <span className="tabular-nums">{n}</span>
+    </span>
   );
 }
 

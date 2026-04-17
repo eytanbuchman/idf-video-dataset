@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useCallback } from "react";
 import type { VideoRecord } from "@/lib/types";
-import { AXES } from "@/lib/types";
+import { AXES, AXIS_CONFIG, FLAG_CONFIG } from "@/lib/axes-config";
 import { getStreamUrl } from "@/lib/video-url";
 import { renderLinkedText, type TagRef } from "@/lib/link-tags";
 
@@ -11,6 +11,36 @@ function excerpt(text: string, max = 100): string {
   const t = text.replace(/\s+/g, " ").trim();
   if (t.length <= max) return t;
   return `${t.slice(0, max)}…`;
+}
+
+function slugFor(video: VideoRecord, axis: (typeof AXES)[number]): string {
+  switch (axis) {
+    case "theater":
+      return video.theaterSlug;
+    case "opponent":
+      return video.opponentSlug;
+    case "kind":
+      return video.kindSlug;
+    case "domain":
+      return video.domainSlug;
+    case "posture":
+      return video.postureSlug;
+  }
+}
+
+function labelFor(video: VideoRecord, axis: (typeof AXES)[number]): string {
+  switch (axis) {
+    case "theater":
+      return video.theater;
+    case "opponent":
+      return video.opponent;
+    case "kind":
+      return video.kind;
+    case "domain":
+      return video.domain;
+    case "posture":
+      return video.posture;
+  }
 }
 
 export function VideoDrawer({
@@ -68,6 +98,11 @@ export function VideoDrawer({
   if (!video) return null;
 
   const streamUrl = getStreamUrl(video.resolved_url);
+
+  const activeFlags = FLAG_CONFIG.filter((f) => {
+    const v = (video as unknown as Record<string, boolean>)[f.field];
+    return Boolean(v);
+  });
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:items-center sm:justify-center sm:p-4">
@@ -159,30 +194,33 @@ export function VideoDrawer({
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {AXES.map((axis) => {
-                const href =
-                  axis === "front"
-                    ? `/browse/front/${video.frontSlug}`
-                    : axis === "opponent"
-                      ? `/browse/opponent/${video.opponentSlug}`
-                      : `/browse/type/${video.typeSlug}`;
-                const label =
-                  axis === "front"
-                    ? `Theater: ${video.front}`
-                    : axis === "opponent"
-                      ? `Opponent: ${video.opponent}`
-                      : `Type: ${video.type}`;
+                const slug = slugFor(video, axis);
+                const label = labelFor(video, axis);
                 return (
                   <Link
                     key={axis}
-                    href={href}
+                    href={`/browse/${axis}/${slug}`}
                     onClick={onClose}
                     className="rounded-full border border-[var(--border)] bg-[var(--background-elev)] px-3 py-1.5 text-[12px] font-medium text-[var(--muted-strong)] transition hover:border-[var(--border-strong)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
                   >
-                    {label}
+                    {AXIS_CONFIG[axis].label}: {label}
                   </Link>
                 );
               })}
             </div>
+            {activeFlags.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {activeFlags.map((f) => (
+                  <span
+                    key={f.key}
+                    className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[12px] font-medium text-amber-800"
+                    title={f.description}
+                  >
+                    ⚑ {f.label}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

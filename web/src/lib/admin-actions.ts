@@ -8,12 +8,13 @@ import {
   SESSION_COOKIE,
   verifySession,
 } from "./admin-auth";
+import { AXIS_CONFIG, AXES, FLAG_CONFIG } from "./axes-config";
+import type { Axis } from "./types";
 import {
   CACHE_TAG_CATEGORIES,
   CACHE_TAG_VIDEOS,
 } from "./videos";
 
-/** Guard all server actions with the session cookie. */
 async function requireAdmin(): Promise<void> {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
@@ -35,6 +36,12 @@ function slugify(raw: string): string {
   return s || "unknown";
 }
 
+function asBool(v: FormDataEntryValue | null): boolean {
+  if (!v) return false;
+  const s = String(v).toLowerCase();
+  return s === "1" || s === "true" || s === "on" || s === "yes";
+}
+
 // ---------------------------------------------------------------------------
 // Video mutations
 // ---------------------------------------------------------------------------
@@ -47,22 +54,51 @@ export async function updateVideo(formData: FormData): Promise<void> {
 
   const message_text = String(formData.get("message_text") ?? "");
   const date = String(formData.get("date") ?? "");
-  const front = (String(formData.get("front") ?? "").trim()) || "Unknown";
-  const opponent = (String(formData.get("opponent") ?? "").trim()) || "Unknown";
-  const type = (String(formData.get("type") ?? "").trim()) || "Unknown";
   const resolved_url = String(formData.get("resolved_url") ?? "");
+
+  const axisValues: Record<Axis, string> = {
+    theater:  (String(formData.get("theater")  ?? "").trim()) || "Unknown",
+    opponent: (String(formData.get("opponent") ?? "").trim()) || "Unknown",
+    kind:     (String(formData.get("kind")     ?? "").trim()) || "Unknown",
+    domain:   (String(formData.get("domain")   ?? "").trim()) || "Multi-domain",
+    posture:  (String(formData.get("posture")  ?? "").trim()) || "Informational",
+  };
+  const axisSlugs: Record<Axis, string> = {
+    theater:  slugify(axisValues.theater),
+    opponent: slugify(axisValues.opponent),
+    kind:     slugify(axisValues.kind),
+    domain:   slugify(axisValues.domain),
+    posture:  slugify(axisValues.posture),
+  };
+
+  const flags = {
+    is_graphic: asBool(formData.get("is_graphic")),
+    involves_hostages: asBool(formData.get("involves_hostages")),
+    involves_ceasefire_violation: asBool(
+      formData.get("involves_ceasefire_violation"),
+    ),
+    has_sensitive_content: asBool(formData.get("has_sensitive_content")),
+  };
 
   await sql()`
     UPDATE videos SET
       message_text = ${message_text},
-      date = ${date},
-      front = ${front},
-      opponent = ${opponent},
-      type = ${type},
+      date         = ${date},
       resolved_url = ${resolved_url},
-      front_slug = ${slugify(front)},
-      opponent_slug = ${slugify(opponent)},
-      type_slug = ${slugify(type)},
+      theater      = ${axisValues.theater},
+      theater_slug = ${axisSlugs.theater},
+      opponent     = ${axisValues.opponent},
+      opponent_slug = ${axisSlugs.opponent},
+      kind         = ${axisValues.kind},
+      kind_slug    = ${axisSlugs.kind},
+      domain       = ${axisValues.domain},
+      domain_slug  = ${axisSlugs.domain},
+      posture      = ${axisValues.posture},
+      posture_slug = ${axisSlugs.posture},
+      is_graphic                   = ${flags.is_graphic},
+      involves_hostages            = ${flags.involves_hostages},
+      involves_ceasefire_violation = ${flags.involves_ceasefire_violation},
+      has_sensitive_content        = ${flags.has_sensitive_content},
       updated_at = now()
     WHERE slug = ${slug}
   `;
@@ -84,11 +120,15 @@ export async function deleteVideo(formData: FormData): Promise<void> {
 // Category (tag) mutations
 // ---------------------------------------------------------------------------
 
+function isAxisKey(s: string): s is Axis {
+  return AXES.includes(s as Axis);
+}
+
 export async function upsertCategory(formData: FormData): Promise<void> {
   await requireAdmin();
 
   const axis = String(formData.get("axis") ?? "");
-  if (!["front", "opponent", "type"].includes(axis)) {
+  if (!isAxisKey(axis)) {
     throw new Error("invalid axis");
   }
   const label = String(formData.get("label") ?? "").trim();
@@ -103,45 +143,24 @@ export async function upsertCategory(formData: FormData): Promise<void> {
     INSERT INTO categories (axis, slug, label, tagline, intro, sort_order)
     VALUES (${axis}, ${slug}, ${label}, ${tagline}, ${intro}, 0)
     ON CONFLICT (axis, slug) DO UPDATE SET
-      label = EXCLUDED.label,
-      tagline = EXCLUDED.tagline,
-      intro = EXCLUDED.intro,
+      label      = EXCLUDED.label,
+      tagline    = EXCLUDED.tagline,
+      intro      = EXCLUDED.intro,
       updated_at = now()
   `;
 
-  // If the label changed, update the denormalized label + slug columns on all
-  // videos that used the old label under this axis. This keeps the video rows
-  // in sync so filtering by slug still works.
+  // If the label changed, propagate the new label + slug to every video that
+  // still uses the old label under this axis, so filtering keeps working.
   if (oldLabel && oldLabel !== label) {
-    const column =
-      axis === "front" ? "front" : axis === "opponent" ? "opponent" : "type";
-    const slugColumn =
-      axis === "front"
-        ? "front_slug"
-        : axis === "opponent"
-          ? "opponent_slug"
-          : "type_slug";
-
-    if (column === "front") {
-      await sql()`
-        UPDATE videos
-        SET front = ${label}, front_slug = ${slug}, updated_at = now()
-        WHERE front = ${oldLabel}
-      `;
-    } else if (column === "opponent") {
-      await sql()`
-        UPDATE videos
-        SET opponent = ${label}, opponent_slug = ${slug}, updated_at = now()
-        WHERE opponent = ${oldLabel}
-      `;
-    } else {
-      await sql()`
-        UPDATE videos
-        SET type = ${label}, type_slug = ${slug}, updated_at = now()
-        WHERE type = ${oldLabel}
-      `;
-    }
-    void slugColumn;
+    const cfg = AXIS_CONFIG[axis];
+    // Column names come from our own static config — safe to inline.
+    await sql().query(
+      `UPDATE videos SET ${cfg.valueColumn} = $1,
+                         ${cfg.slugColumn}  = $2,
+                         updated_at = now()
+       WHERE ${cfg.valueColumn} = $3`,
+      [label, slug, oldLabel],
+    );
   }
 
   updateTag(CACHE_TAG_VIDEOS);
@@ -153,28 +172,29 @@ export async function deleteCategory(formData: FormData): Promise<void> {
   await requireAdmin();
   const axis = String(formData.get("axis") ?? "");
   const slug = String(formData.get("slug") ?? "");
-  if (!["front", "opponent", "type"].includes(axis)) {
+  if (!isAxisKey(axis)) {
     throw new Error("invalid axis");
   }
   if (!slug) throw new Error("slug required");
 
+  const cfg = AXIS_CONFIG[axis];
   // Refuse if any videos still reference this slug.
-  let usage = 0;
-  if (axis === "front") {
-    const rows = (await sql()`SELECT COUNT(*)::int AS c FROM videos WHERE front_slug = ${slug}`) as unknown as { c: number }[];
-    usage = rows[0]?.c ?? 0;
-  } else if (axis === "opponent") {
-    const rows = (await sql()`SELECT COUNT(*)::int AS c FROM videos WHERE opponent_slug = ${slug}`) as unknown as { c: number }[];
-    usage = rows[0]?.c ?? 0;
-  } else {
-    const rows = (await sql()`SELECT COUNT(*)::int AS c FROM videos WHERE type_slug = ${slug}`) as unknown as { c: number }[];
-    usage = rows[0]?.c ?? 0;
-  }
+  const usageRows = (await sql().query(
+    `SELECT COUNT(*)::int AS c FROM videos WHERE ${cfg.slugColumn} = $1`,
+    [slug],
+  )) as unknown as { c: number }[];
+  const usage = usageRows[0]?.c ?? 0;
   if (usage > 0) {
-    redirect(`/admin/tags?in_use=${encodeURIComponent(axis + ":" + slug)}&count=${usage}`);
+    redirect(
+      `/admin/tags?in_use=${encodeURIComponent(axis + ":" + slug)}&count=${usage}`,
+    );
   }
 
   await sql()`DELETE FROM categories WHERE axis = ${axis} AND slug = ${slug}`;
   updateTag(CACHE_TAG_CATEGORIES);
   redirect("/admin/tags?deleted=1");
 }
+
+// Re-export for downstream consumers that previously imported FLAG_CONFIG
+// indirectly from admin-actions. Keeps the import graph tidy.
+export { FLAG_CONFIG };

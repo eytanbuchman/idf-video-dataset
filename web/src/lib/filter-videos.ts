@@ -1,11 +1,22 @@
 import type { Axis, VideoRecord } from "./types";
+import { AXES } from "./axes-config";
 import { getSlugForAxis } from "./videos";
+
+/**
+ * Per-axis slug filter. Uses a partial keyed by axis id so adding a new
+ * axis is a one-line change in `axes-config.ts` without touching this file.
+ */
+export type AxisFilters = Partial<Record<Axis, string>>;
 
 export type ListFilters = {
   q?: string;
-  frontSlug?: string;
-  opponentSlug?: string;
-  typeSlug?: string;
+  axes?: AxisFilters;
+  flags?: {
+    isGraphic?: boolean;
+    involvesHostages?: boolean;
+    involvesCeasefireViolation?: boolean;
+    hasSensitiveContent?: boolean;
+  };
   dateFrom?: string;
   dateTo?: string;
 };
@@ -15,9 +26,11 @@ function matchesQuery(v: VideoRecord, q: string): boolean {
   if (!needle) return true;
   return (
     v.message_text.toLowerCase().includes(needle) ||
-    v.front.toLowerCase().includes(needle) ||
+    v.theater.toLowerCase().includes(needle) ||
     v.opponent.toLowerCase().includes(needle) ||
-    v.type.toLowerCase().includes(needle)
+    v.kind.toLowerCase().includes(needle) ||
+    v.domain.toLowerCase().includes(needle) ||
+    v.posture.toLowerCase().includes(needle)
   );
 }
 
@@ -42,9 +55,22 @@ export function filterVideos(
 ): VideoRecord[] {
   return list.filter((v) => {
     if (f.q && !matchesQuery(v, f.q)) return false;
-    if (f.frontSlug && v.frontSlug !== f.frontSlug) return false;
-    if (f.opponentSlug && v.opponentSlug !== f.opponentSlug) return false;
-    if (f.typeSlug && v.typeSlug !== f.typeSlug) return false;
+    if (f.axes) {
+      for (const axis of AXES) {
+        const want = f.axes[axis];
+        if (want && getSlugForAxis(v, axis) !== want) return false;
+      }
+    }
+    if (f.flags) {
+      if (f.flags.isGraphic && !v.isGraphic) return false;
+      if (f.flags.involvesHostages && !v.involvesHostages) return false;
+      if (
+        f.flags.involvesCeasefireViolation &&
+        !v.involvesCeasefireViolation
+      )
+        return false;
+      if (f.flags.hasSensitiveContent && !v.hasSensitiveContent) return false;
+    }
     if (!dateInRange(v.date, f.dateFrom, f.dateTo)) return false;
     return true;
   });
@@ -60,4 +86,14 @@ export function filterByPillar(
 
 export function sortByDateDesc(list: VideoRecord[]): VideoRecord[] {
   return [...list].sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+}
+
+/** True when any filter is active — used to decide whether to show the
+ *  landing "last 10" slice vs. full paginated results. */
+export function hasAnyFilter(f: ListFilters): boolean {
+  if (f.q) return true;
+  if (f.dateFrom || f.dateTo) return true;
+  if (f.axes && Object.values(f.axes).some((v) => !!v)) return true;
+  if (f.flags && Object.values(f.flags).some((v) => !!v)) return true;
+  return false;
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Axis } from "./types";
+import { AXES } from "./axes-config";
 import type { LibraryStats } from "./videos";
 
 export type TagRef = {
@@ -9,14 +10,15 @@ export type TagRef = {
   axis: Axis;
 };
 
-/** Flatten all library tags into a single list, longest label first.
- *  Longest-first so "Combat footage" matches before "Combat". */
+/** Flatten every axis's categories into a single list, longest-label-first
+ *  so multi-word tags like "Combat footage" match before "Combat". */
 export function buildTagIndex(stats: LibraryStats): TagRef[] {
-  const all: TagRef[] = [
-    ...stats.byFront.map((x) => ({ ...x, axis: "front" as const })),
-    ...stats.byOpponent.map((x) => ({ ...x, axis: "opponent" as const })),
-    ...stats.byType.map((x) => ({ ...x, axis: "type" as const })),
-  ];
+  const all: TagRef[] = [];
+  for (const axis of AXES) {
+    for (const row of stats.by[axis]) {
+      all.push({ label: row.label, slug: row.slug, axis });
+    }
+  }
   const seen = new Set<string>();
   const dedup: TagRef[] = [];
   for (const t of all) {
@@ -33,9 +35,9 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** Render a string of text with any substrings matching a known tag label
- *  converted to a Link pointing at /browse/<axis>/<slug>. Case-insensitive
- *  whole-word matching; preserves original casing in the output. */
+/** Render text with any substrings matching a known tag label converted to a
+ *  Link pointing at /browse/<axis>/<slug>. Case-insensitive whole-word match;
+ *  preserves original casing in the output. */
 export function renderLinkedText(
   text: string,
   tags: TagRef[],
@@ -48,8 +50,6 @@ export function renderLinkedText(
 
   const pattern = tags.map((t) => escapeRegex(t.label)).join("|");
   if (!pattern) return text;
-  // Use lookaround-style boundaries that work for multi-word phrases.
-  // We require a non-word character (or start/end of string) on each side.
   const re = new RegExp(`(?<![A-Za-z0-9])(${pattern})(?![A-Za-z0-9])`, "gi");
 
   const byLower = new Map<string, TagRef>();

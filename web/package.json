@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "data:build": "tsx scripts/build-videos-data.ts",
     "db:seed": "tsx scripts/seed-db.ts",
+    "db:migrate": "tsx scripts/migrate-axes.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { axisLabel, getLibraryStats, isAxis } from "@/lib/videos";
+import { axisLabel, isAxis, getLibraryStats } from "@/lib/videos";
 import type { Axis } from "@/lib/types";
 
 type Props = { params: Promise<{ axis: string }> };
@@ -23,12 +23,7 @@ export default async function AxisHubPage({ params }: Props) {
   if (!isAxis(raw)) notFound();
   const axis = raw as Axis;
   const stats = await getLibraryStats();
-  const list =
-    axis === "front"
-      ? stats.byFront
-      : axis === "opponent"
-        ? stats.byOpponent
-        : stats.byType;
+  const list = stats.by[axis];
 
   return (
     <div>

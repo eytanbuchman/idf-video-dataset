@@ -3,7 +3,8 @@
 Bulk re-classify every video in the DB against the *current* category list.
 
 Runs GPT-4o-mini once per video, skipping rows that are already correctly
-tagged against the current axes (tracked via cache.json). Safe to re-run.
+tagged against the current axes + flags (tracked via cache.json). Safe to
+re-run.
 
 Required env:
   DATABASE_URL     postgres connection string
@@ -19,21 +20,31 @@ from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
 
-# Reuse helpers from the scraper module — same DB layout, same classify logic.
 from scraper import (
-    CACHE_FILE,
+    AXIS_KEYS,
     DEFAULT_AXES,
+    FLAG_KEYS,
     categorize,
     db_connect,
     load_cache,
     read_axes_from_db,
-    record_run_start,
     record_run_end,
+    record_run_start,
     save_cache,
     slugify,
 )
 
 load_dotenv()
+
+
+def _row_changed(new: dict, current: dict) -> bool:
+    for axis in AXIS_KEYS:
+        if new[axis] != current.get(axis):
+            return True
+    for flag in FLAG_KEYS:
+        if bool(new[flag]) != bool(current.get(flag)):
+            return True
+    return False
 
 
 def run_retag(limit: int | None = None) -> None:
@@ -56,52 +67,77 @@ def run_retag(limit: int | None = None) -> None:
         try:
             axes = read_axes_from_db(conn) or DEFAULT_AXES
 
+            select_cols = (
+                ["slug", "message_id", "bitly_url", "message_text"]
+                + list(AXIS_KEYS)
+                + list(FLAG_KEYS)
+            )
+            sql_cols = ", ".join(select_cols)
+
             with conn.cursor() as cur:
                 if limit:
                     cur.execute(
-                        "SELECT slug, message_id, bitly_url, message_text, "
-                        "front, opponent, type FROM videos "
+                        f"SELECT {sql_cols} FROM videos "
                         "ORDER BY date DESC LIMIT %s",
                         (limit,),
                     )
                 else:
                     cur.execute(
-                        "SELECT slug, message_id, bitly_url, message_text, "
-                        "front, opponent, type FROM videos ORDER BY date DESC"
+                        f"SELECT {sql_cols} FROM videos ORDER BY date DESC"
                     )
                 rows = cur.fetchall()
 
             total = len(rows)
-            print(f"Re-tagging {total} videos...")
+            print(f"Re-tagging {total} videos against axes: {list(axes.keys())}")
 
-            for i, (slug, message_id, bitly_url, text, cur_front, cur_opp, cur_type) in enumerate(rows, start=1):
+            for i, row in enumerate(rows, start=1):
+                record = dict(zip(select_cols, row))
+                slug = record["slug"]
+                message_id = record["message_id"]
+                bitly_url = record["bitly_url"]
+                text = record["message_text"] or ""
+
                 cats = categorize(
-                    text or "",
+                    text,
                     axes,
                     cache,
                     f"{message_id}_{bitly_url}",
                 )
-                new_front = cats["front"]
-                new_opp = cats["opponent"]
-                new_type = cats["type"]
 
-                if (new_front, new_opp, new_type) == (cur_front, cur_opp, cur_type):
+                if not _row_changed(cats, record):
                     skipped += 1
                 else:
+                    # Build the UPDATE dynamically so adding another axis or
+                    # flag later stays a one-line change.
+                    set_parts: list[str] = []
+                    params: list = []
+                    for axis in AXIS_KEYS:
+                        set_parts.append(f"{axis} = %s")
+                        set_parts.append(f"{axis}_slug = %s")
+                        params.append(cats[axis])
+                        params.append(slugify(cats[axis]))
+                    # Keep legacy columns aligned with theater / kind.
+                    set_parts += [
+                        "front = %s",
+                        "front_slug = %s",
+                        "type = %s",
+                        "type_slug = %s",
+                    ]
+                    params += [
+                        cats["theater"], slugify(cats["theater"]),
+                        cats["kind"], slugify(cats["kind"]),
+                    ]
+                    for flag in FLAG_KEYS:
+                        set_parts.append(f"{flag} = %s")
+                        params.append(bool(cats[flag]))
+                    set_parts.append("updated_at = now()")
+                    params.append(slug)
+
                     with conn.cursor() as cur2:
                         cur2.execute(
-                            """
-                            UPDATE videos SET
-                              front = %s, opponent = %s, type = %s,
-                              front_slug = %s, opponent_slug = %s, type_slug = %s,
-                              updated_at = now()
-                            WHERE slug = %s
-                            """,
-                            (
-                                new_front, new_opp, new_type,
-                                slugify(new_front), slugify(new_opp), slugify(new_type),
-                                slug,
-                            ),
+                            f"UPDATE videos SET {', '.join(set_parts)} "
+                            f"WHERE slug = %s",
+                            params,
                         )
                     updated += 1
 
@@ -124,16 +160,21 @@ def run_retag(limit: int | None = None) -> None:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Re-classify all videos against current DB tags.")
-    parser.add_argument("--limit", type=int, default=None, help="Optional max rows to process")
+    parser = argparse.ArgumentParser(
+        description="Re-classify all videos against current DB tags."
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Optional max rows to process",
+    )
     args = parser.parse_args()
     run_retag(limit=args.limit)
 
 
 if __name__ == "__main__":
-    # Make sure `from scraper import ...` resolves when CI runs from repo root.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    # Sanity-touch OpenAI import so CI catches missing deps early.
     _ = OpenAI
     _ = json
     main()

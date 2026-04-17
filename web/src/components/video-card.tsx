@@ -61,7 +61,7 @@ export function VideoCard({
                 aria-hidden
               />
               <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--muted-strong)]">
-                {v.type}
+                {v.kind}
               </span>
             </div>
             {onOpen ? (
@@ -82,11 +82,21 @@ export function VideoCard({
             )}
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted-strong)]">
-                {v.front}
+                {v.theater}
               </span>
               <span className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted-strong)]">
                 {v.opponent}
               </span>
+              {v.isGraphic && (
+                <span className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted-strong)]">
+                  Graphic
+                </span>
+              )}
+              {v.involvesHostages && (
+                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800">
+                  Hostage-related
+                </span>
+              )}
             </div>
           </div>
           <div className="shrink-0 self-center">

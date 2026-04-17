@@ -1,6 +1,12 @@
-export type Axis = "front" | "opponent" | "type";
+/**
+ * Core type definitions for the video library. Axis metadata lives in
+ * `axes-config.ts`; this file exports the string-literal union and the
+ * `VideoRecord` shape every component consumes.
+ */
+export type Axis = "theater" | "opponent" | "kind" | "domain" | "posture";
 
-export const AXES: Axis[] = ["front", "opponent", "type"];
+// Re-export AXES from axes-config for backwards compatibility.
+export { AXES, isAxis, axisLabel, AXIS_CONFIG } from "./axes-config";
 
 export type VideoRecord = {
   id: string;
@@ -11,10 +17,20 @@ export type VideoRecord = {
   resolved_url: string;
   video_file: string;
   message_text: string;
-  front: string;
+
+  theater: string;
+  theaterSlug: string;
   opponent: string;
-  type: string;
-  frontSlug: string;
   opponentSlug: string;
-  typeSlug: string;
+  kind: string;
+  kindSlug: string;
+  domain: string;
+  domainSlug: string;
+  posture: string;
+  postureSlug: string;
+
+  isGraphic: boolean;
+  involvesHostages: boolean;
+  involvesCeasefireViolation: boolean;
+  hasSensitiveContent: boolean;
 };

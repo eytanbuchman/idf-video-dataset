@@ -29,7 +29,7 @@ export function HeroStats({ stats }: { stats: LibraryStats }) {
         </strong>{" "}
         clips across{" "}
         <strong className="font-semibold text-[var(--foreground)] tabular-nums">
-          {stats.byFront.length}
+          {stats.by.theater.length}
         </strong>{" "}
         theaters — built for anyone who needs to find official footage and
         metadata to use responsibly in reporting, research, or education.

@@ -7,7 +7,7 @@ import { JsonLd } from "@/components/json-ld";
 import { CopyPageUrl } from "@/components/copy-page-url";
 import { getStreamUrl } from "@/lib/video-url";
 import { getSiteUrl } from "@/lib/site";
-import { AXES } from "@/lib/types";
+import { AXES, AXIS_CONFIG, FLAG_CONFIG } from "@/lib/axes-config";
 import { buildTagIndex, renderLinkedText } from "@/lib/link-tags";
 import {
   getAllVideos,
@@ -55,7 +55,7 @@ export default async function VideoPage({ params }: Props) {
 
   const allVideos = await getAllVideos();
   const related = allVideos
-    .filter((x) => x.slug !== v.slug && x.frontSlug === v.frontSlug)
+    .filter((x) => x.slug !== v.slug && x.theaterSlug === v.theaterSlug)
     .slice(0, 8);
 
   const videoLd = {
@@ -77,13 +77,13 @@ export default async function VideoPage({ params }: Props) {
         "@type": "ListItem",
         position: 2,
         name: "Theater",
-        item: `${base}/browse/front/${v.frontSlug}`,
+        item: `${base}/browse/theater`,
       },
       {
         "@type": "ListItem",
         position: 3,
-        name: v.front,
-        item: `${base}/browse/front/${v.frontSlug}`,
+        name: v.theater,
+        item: `${base}/browse/theater/${v.theaterSlug}`,
       },
       {
         "@type": "ListItem",
@@ -96,9 +96,13 @@ export default async function VideoPage({ params }: Props) {
 
   const crumbs = [
     { label: "Home", href: "/" },
-    { label: v.front, href: `/browse/front/${v.frontSlug}` },
+    { label: v.theater, href: `/browse/theater/${v.theaterSlug}` },
     { label: excerpt(v.message_text, 48), href: undefined },
   ];
+
+  const activeFlags = FLAG_CONFIG.filter((f) =>
+    Boolean((v as unknown as Record<string, boolean>)[f.field]),
+  );
 
   return (
     <article>
@@ -124,11 +128,17 @@ export default async function VideoPage({ params }: Props) {
               href={`/browse/${axis}/${getSlugForAxis(v, axis)}`}
               className="rounded-full border border-[var(--border)] bg-[var(--background-elev)] px-3 py-1.5 text-[12px] font-medium text-[var(--muted-strong)] shadow-[var(--shadow-sm)] transition hover:border-[var(--border-strong)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
             >
-              {axis === "front" && "Theater: "}
-              {axis === "opponent" && "Opponent: "}
-              {axis === "type" && "Type: "}
-              {getLabelForAxis(v, axis)}
+              {AXIS_CONFIG[axis].label}: {getLabelForAxis(v, axis)}
             </Link>
+          ))}
+          {activeFlags.map((f) => (
+            <span
+              key={f.key}
+              className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[12px] font-medium text-amber-800"
+              title={f.description}
+            >
+              ⚑ {f.label}
+            </span>
           ))}
         </div>
       </header>
@@ -198,7 +208,7 @@ export default async function VideoPage({ params }: Props) {
       {related.length > 0 && (
         <section className="mt-16 border-t border-[var(--border)] pt-10">
           <h2 className="font-[family-name:var(--font-display)] text-2xl tracking-[-0.01em] text-[var(--foreground)]">
-            More from {v.front}
+            More from {v.theater}
           </h2>
           <ul className="mt-6 space-y-3">
             {related.map((r) => (

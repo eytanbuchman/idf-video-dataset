@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { deleteVideo, updateVideo } from "@/lib/admin-actions";
 import { getAllCategories } from "@/lib/category-copy";
-import { getVideoBySlug } from "@/lib/videos";
+import { AXES, AXIS_CONFIG, FLAG_CONFIG } from "@/lib/axes-config";
+import { getLabelForAxis, getVideoBySlug } from "@/lib/videos";
+import type { Axis } from "@/lib/types";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -22,9 +24,18 @@ export default async function EditVideoPage({ params, searchParams }: Props) {
   ]);
   if (!v) notFound();
 
-  const fronts = categories.filter((c) => c.axis === "front");
-  const opponents = categories.filter((c) => c.axis === "opponent");
-  const types = categories.filter((c) => c.axis === "type");
+  const byAxis: Record<Axis, { label: string; slug: string }[]> = {
+    theater: [],
+    opponent: [],
+    kind: [],
+    domain: [],
+    posture: [],
+  };
+  for (const c of categories) {
+    if (c.axis in byAxis) {
+      byAxis[c.axis as Axis].push({ label: c.label, slug: c.slug });
+    }
+  }
 
   const dateInputValue = v.date ? v.date.slice(0, 10) : "";
 
@@ -66,65 +77,62 @@ export default async function EditVideoPage({ params, searchParams }: Props) {
           />
         </label>
 
-        <div className="grid gap-5 md:grid-cols-3">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-              Front
-            </span>
-            <select
-              name="front"
-              defaultValue={v.front}
-              className="rounded-xl border border-[var(--border)] bg-[var(--background-elev)] px-3 py-2.5 text-[13px] text-[var(--foreground)] outline-none"
-            >
-              {fronts.map((c) => (
-                <option key={c.slug} value={c.label}>
-                  {c.label}
-                </option>
-              ))}
-              {!fronts.some((c) => c.label === v.front) && (
-                <option value={v.front}>{v.front} (unlisted)</option>
-              )}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-              Opponent
-            </span>
-            <select
-              name="opponent"
-              defaultValue={v.opponent}
-              className="rounded-xl border border-[var(--border)] bg-[var(--background-elev)] px-3 py-2.5 text-[13px] text-[var(--foreground)] outline-none"
-            >
-              {opponents.map((c) => (
-                <option key={c.slug} value={c.label}>
-                  {c.label}
-                </option>
-              ))}
-              {!opponents.some((c) => c.label === v.opponent) && (
-                <option value={v.opponent}>{v.opponent} (unlisted)</option>
-              )}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-              Type
-            </span>
-            <select
-              name="type"
-              defaultValue={v.type}
-              className="rounded-xl border border-[var(--border)] bg-[var(--background-elev)] px-3 py-2.5 text-[13px] text-[var(--foreground)] outline-none"
-            >
-              {types.map((c) => (
-                <option key={c.slug} value={c.label}>
-                  {c.label}
-                </option>
-              ))}
-              {!types.some((c) => c.label === v.type) && (
-                <option value={v.type}>{v.type} (unlisted)</option>
-              )}
-            </select>
-          </label>
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {AXES.map((axis) => {
+            const current = getLabelForAxis(v, axis);
+            const rows = byAxis[axis];
+            return (
+              <label key={axis} className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                  {AXIS_CONFIG[axis].label}
+                </span>
+                <select
+                  name={axis}
+                  defaultValue={current}
+                  className="rounded-xl border border-[var(--border)] bg-[var(--background-elev)] px-3 py-2.5 text-[13px] text-[var(--foreground)] outline-none"
+                >
+                  {rows.map((c) => (
+                    <option key={c.slug} value={c.label}>
+                      {c.label}
+                    </option>
+                  ))}
+                  {!rows.some((c) => c.label === current) && (
+                    <option value={current}>{current} (unlisted)</option>
+                  )}
+                </select>
+              </label>
+            );
+          })}
         </div>
+
+        <fieldset className="rounded-xl border border-[var(--border)] bg-[var(--background-elev)] p-4">
+          <legend className="px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+            Flags
+          </legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {FLAG_CONFIG.map((f) => {
+              const checked = Boolean(
+                (v as unknown as Record<string, boolean>)[f.field],
+              );
+              return (
+                <label
+                  key={f.key}
+                  className="inline-flex items-center gap-2 text-[13px] text-[var(--muted-strong)]"
+                  title={f.description}
+                >
+                  <input
+                    type="checkbox"
+                    name={f.key}
+                    value="1"
+                    defaultChecked={checked}
+                    className="h-[16px] w-[16px] accent-[var(--foreground)]"
+                  />
+                  {f.label}
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
 
         <label className="flex flex-col gap-1.5">
           <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
