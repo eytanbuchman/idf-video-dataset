@@ -8,7 +8,7 @@ import {
   SESSION_COOKIE,
   verifySession,
 } from "./admin-auth";
-import { AXIS_CONFIG, AXES, FLAG_CONFIG } from "./axes-config";
+import { AXIS_CONFIG, AXES } from "./axes-config";
 import type { Axis } from "./types";
 import {
   CACHE_TAG_CATEGORIES,
@@ -194,7 +194,3 @@ export async function deleteCategory(formData: FormData): Promise<void> {
   updateTag(CACHE_TAG_CATEGORIES);
   redirect("/admin/tags?deleted=1");
 }
-
-// Re-export for downstream consumers that previously imported FLAG_CONFIG
-// indirectly from admin-actions. Keeps the import graph tidy.
-export { FLAG_CONFIG };
