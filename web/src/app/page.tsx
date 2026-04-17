@@ -40,7 +40,7 @@ export default async function HomePage({
   const sp = await searchParams;
   const { filters, page } = parseFilters(sp);
   const stats = getLibraryStats();
-  let list = sortByDateDesc(filterVideos(videos, filters));
+  const list = sortByDateDesc(filterVideos(videos, filters));
   const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const slice = list.slice(

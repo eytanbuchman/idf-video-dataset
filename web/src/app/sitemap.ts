@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getSiteUrl } from "@/lib/site";
-import { AXES, type Axis } from "@/lib/types";
+import { AXES } from "@/lib/types";
 import { videos } from "@/lib/videos";
 
 export default function sitemap(): MetadataRoute.Sitemap {

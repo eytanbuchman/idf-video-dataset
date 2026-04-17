@@ -60,7 +60,7 @@ export default async function PillarPage({ params, searchParams }: Props) {
   if (!isAxis(raw)) notFound();
   const axis = raw as Axis;
 
-  let list = sortByDateDesc(filterByPillar(videos, axis, categorySlug));
+  const list = sortByDateDesc(filterByPillar(videos, axis, categorySlug));
   if (list.length === 0) notFound();
 
   const label = getLabelForAxis(list[0], axis);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import type { VideoRecord } from "@/lib/types";
 import { VideoCard } from "./video-card";
 
@@ -44,13 +44,6 @@ export function VideoListClient({
     a.click();
     URL.revokeObjectURL(url);
   }, [selected]);
-
-  const allSelected = useMemo(
-    () =>
-      pageVideos.length > 0 &&
-      pageVideos.every((v) => selected.has(v.slug)),
-    [pageVideos, selected],
-  );
 
   return (
     <div>
