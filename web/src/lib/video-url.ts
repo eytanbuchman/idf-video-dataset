@@ -1,10 +1,14 @@
-const VIDEO_EXT = /\.(mp4|webm|mov|mkv|avi)$/i;
-
-/** Stream URL on Azure CDN — no bytes proxied through Vercel. */
-export function getStreamUrl(resolvedUrl: string, videoFile: string): string {
-  const path = resolvedUrl.split("?")[0];
-  if (VIDEO_EXT.test(path)) return resolvedUrl;
-  const base = resolvedUrl.replace(/\/$/, "");
-  const file = videoFile.replace(/^\//, "");
-  return `${base}/${file}`;
+/**
+ * Stream URL on Azure CDN — no bytes proxied through Vercel.
+ *
+ * Use `resolved_url` exactly as returned from Bitly (HEAD redirect). That URL
+ * is the canonical blob path on videoidf.azureedge.net (often a GUID with no
+ * `.mp4` in the path — the CDN still serves video).
+ *
+ * `video_file` in the CSV is the scraper’s *local* download filename
+ * (see scraper `video_dest_path`), not a segment to append to the CDN URL.
+ * Appending it produced broken links like `.../guid/filename.mp4`.
+ */
+export function getStreamUrl(resolvedUrl: string): string {
+  return resolvedUrl.trim();
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, Instrument_Serif, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import { AmbientMesh } from "@/components/ambient-mesh";
 import { SiteHeader } from "@/components/site-header";
 import { getSiteUrl } from "@/lib/site";
 
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
     template: "%s · IDF Video Dataset",
   },
   description:
-    "Searchable catalog of IDF Spokesperson video releases: filter by theater, opponent, and footage type. Stream from official CDN or export metadata as CSV.",
+    "Search the IDF video database: filter by theater, opponent, and footage type. Stream from official CDN or export metadata as CSV.",
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -42,7 +43,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "IDF Video Dataset",
     description:
-      "Browse and search IDF Spokesperson video releases with filters and CSV export.",
+      "Find official IDF spokesperson footage and metadata for research and reporting.",
   },
 };
 
@@ -56,15 +57,27 @@ export default function RootLayout({
       lang="en"
       className={`${display.variable} ${body.variable} ${mono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[var(--background)]">
+      <body className="relative min-h-full flex flex-col">
+        <AmbientMesh />
         <SiteHeader />
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 md:px-6 md:py-12">
+        <main className="relative z-10 mx-auto w-full max-w-6xl flex-1 px-4 py-8 pb-12 sm:px-6 sm:py-12 md:py-14">
           {children}
         </main>
-        <footer className="border-t border-[var(--border)] py-8 text-center text-xs text-[var(--muted)]">
-          <p>
-            Metadata from public Telegram releases; video streams served from
-            official Azure CDN endpoints.
+        <footer className="relative z-10 border-t border-white/[0.05] px-4 py-10 text-center sm:px-6">
+          <p className="mx-auto max-w-lg text-xs leading-relaxed text-[var(--muted)]">
+            Built for people who need to locate official footage and metadata
+            to use responsibly. Video streams come from public CDN endpoints;
+            always verify context at the source.
+          </p>
+          <p className="mt-4">
+            <a
+              href="https://www.idf.il/en"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-teal-400/70 underline-offset-4 transition hover:text-teal-300/90 hover:underline"
+            >
+              IDF website — idf.il/en
+            </a>
           </p>
         </footer>
       </body>

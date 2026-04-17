@@ -31,14 +31,14 @@ export default async function AxisHubPage({ params }: Props) {
   return (
     <div>
       <nav className="mb-6 text-sm text-[var(--muted)]">
-        <Link href="/browse" className="hover:text-[var(--foreground)]">
+        <Link href="/browse" className="hover:text-teal-300/90">
           Browse
         </Link>
-        <span className="mx-2">/</span>
+        <span className="mx-2 text-white/20">/</span>
         <span className="text-[var(--foreground)]">{axisLabel(axis)}</span>
       </nav>
       <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-tight">
-        {axisLabel(axis)}
+        <span className="text-gradient">{axisLabel(axis)}</span>
       </h1>
       <p className="mt-4 max-w-2xl text-[var(--muted)]">
         {list.length} distinct values. Open a category to see every matching
@@ -49,7 +49,7 @@ export default async function AxisHubPage({ params }: Props) {
           <li key={row.slug} className="mb-2 break-inside-avoid">
             <Link
               href={`/browse/${axis}/${row.slug}`}
-              className="text-[var(--accent)] hover:underline"
+              className="text-teal-300/90 underline-offset-2 hover:underline"
             >
               {row.label}
             </Link>

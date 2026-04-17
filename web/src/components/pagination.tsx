@@ -25,17 +25,18 @@ export function Pagination({
 
   return (
     <nav
-      className="mt-8 flex items-center justify-between gap-4 border-t border-[var(--border)] pt-6 text-sm"
+      className="mt-10 flex items-center justify-between gap-4 border-t border-white/[0.06] pt-8 text-sm"
       aria-label="Pagination"
     >
-      <div className="text-[var(--muted)]">
-        Page {page} of {totalPages}
+      <div className="font-mono text-xs text-[var(--muted)]">
+        Page <span className="text-[var(--foreground)]">{page}</span> of{" "}
+        {totalPages}
       </div>
       <div className="flex gap-2">
         {page > 1 && (
           <Link
             href={qs(page - 1)}
-            className="rounded-full border border-[var(--border)] px-4 py-1.5 hover:border-[var(--foreground)]"
+            className="rounded-full border border-white/[0.1] bg-white/[0.03] px-5 py-2 text-sm transition hover:border-teal-500/40 hover:bg-teal-500/10"
           >
             Previous
           </Link>
@@ -43,7 +44,7 @@ export function Pagination({
         {page < totalPages && (
           <Link
             href={qs(page + 1)}
-            className="rounded-full border border-[var(--border)] px-4 py-1.5 hover:border-[var(--foreground)]"
+            className="rounded-full border border-white/[0.1] bg-white/[0.03] px-5 py-2 text-sm transition hover:border-teal-500/40 hover:bg-teal-500/10"
           >
             Next
           </Link>

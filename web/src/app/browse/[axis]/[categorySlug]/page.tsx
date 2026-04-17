@@ -1,9 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { JsonLd } from "@/components/json-ld";
-import { VideoListClient } from "@/components/video-list-client";
-import { Pagination } from "@/components/pagination";
+import { ResultsWithDrawer } from "@/components/results-with-drawer";
+import { ResultsFallback } from "@/components/results-fallback";
 import { filterByPillar, sortByDateDesc } from "@/lib/filter-videos";
 import { getSiteUrl } from "@/lib/site";
 import type { Axis } from "@/lib/types";
@@ -124,30 +125,30 @@ export default async function PillarPage({ params, searchParams }: Props) {
       <JsonLd data={collectionLd} />
 
       <nav className="mb-6 text-sm text-[var(--muted)]">
-        <Link href="/" className="hover:text-[var(--foreground)]">
+        <Link href="/" className="hover:text-teal-300/90">
           Home
         </Link>
-        <span className="mx-2">/</span>
-        <Link href="/browse" className="hover:text-[var(--foreground)]">
+        <span className="mx-2 text-white/20">/</span>
+        <Link href="/browse" className="hover:text-teal-300/90">
           Browse
         </Link>
-        <span className="mx-2">/</span>
+        <span className="mx-2 text-white/20">/</span>
         <Link
           href={`/browse/${axis}`}
-          className="hover:text-[var(--foreground)]"
+          className="hover:text-teal-300/90"
         >
           {axisLabel(axis)}
         </Link>
-        <span className="mx-2">/</span>
+        <span className="mx-2 text-white/20">/</span>
         <span className="text-[var(--foreground)]">{label}</span>
       </nav>
 
       <header className="mb-10 max-w-3xl">
-        <p className="font-mono text-xs uppercase tracking-wider text-[var(--muted)]">
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
           {axisLabel(axis)}
         </p>
         <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl tracking-tight md:text-5xl">
-          {label}
+          <span className="text-gradient">{label}</span>
         </h1>
         <p className="mt-4 text-[var(--muted)]">
           <strong className="text-[var(--foreground)]">
@@ -165,8 +166,8 @@ export default async function PillarPage({ params, searchParams }: Props) {
         </p>
       </header>
 
-      <section className="mb-10 border border-[var(--border)] p-6">
-        <h2 className="font-mono text-xs uppercase tracking-wider text-[var(--muted)]">
+      <section className="mb-10 rounded-2xl border border-white/[0.08] bg-[var(--glass)] p-6 shadow-xl shadow-black/20 backdrop-blur-xl">
+        <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
           Dataset context
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">
@@ -177,30 +178,29 @@ export default async function PillarPage({ params, searchParams }: Props) {
           selected rows as CSV.
         </p>
         <p className="mt-4 flex flex-wrap gap-3 text-sm">
-          <Link href="/" className="text-[var(--accent)] hover:underline">
+          <Link href="/" className="text-teal-300/90 underline-offset-2 hover:underline">
             ← Back to search
           </Link>
           <Link
             href={`/browse/${axis}`}
-            className="text-[var(--accent)] hover:underline"
+            className="text-teal-300/90 underline-offset-2 hover:underline"
           >
             All {axisLabel(axis)} values
           </Link>
         </p>
       </section>
 
-      <p className="mb-4 text-sm text-[var(--muted)]">
-        Showing {(safePage - 1) * PAGE_SIZE + 1}–
-        {Math.min(safePage * PAGE_SIZE, list.length)} of{" "}
-        {list.length.toLocaleString()}
-      </p>
-      <VideoListClient pageVideos={slice} />
-      <Pagination
-        basePath={`/browse/${axis}/${categorySlug}`}
-        searchParams={{}}
-        page={safePage}
-        totalPages={totalPages}
-      />
+      <Suspense fallback={<ResultsFallback />}>
+        <ResultsWithDrawer
+          pageVideos={slice}
+          basePath={`/browse/${axis}/${categorySlug}`}
+          searchParams={{}}
+          page={safePage}
+          totalPages={totalPages}
+          pageSize={PAGE_SIZE}
+          totalMatching={list.length}
+        />
+      </Suspense>
     </div>
   );
 }
