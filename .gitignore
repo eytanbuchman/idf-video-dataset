@@ -9,3 +9,4 @@ out/
 __pycache__/
 .cache/
 .DS_Store
+cache.json
