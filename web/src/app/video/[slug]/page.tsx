@@ -139,9 +139,7 @@ export default async function VideoPage({ params }: Props) {
               preload="metadata"
               className="aspect-video w-full"
               src={streamUrl}
-            >
-              <track kind="captions" />
-            </video>
+            />
           </div>
           <div className="mt-4 flex flex-wrap gap-3">
             <a
