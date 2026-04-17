@@ -19,7 +19,7 @@ export function SearchFilters({
 
   return (
     <form method="get" className="relative">
-      <div className="rounded-3xl border border-white/[0.07] bg-[var(--glass)] p-3 shadow-xl shadow-black/25 backdrop-blur-2xl sm:p-4">
+      <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-elev)] p-3 shadow-[var(--shadow-md)] sm:p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative min-w-0 flex-1">
             <label htmlFor="q" className="sr-only">
@@ -49,13 +49,13 @@ export function SearchFilters({
               type="search"
               defaultValue={filters.q ?? ""}
               placeholder="Search transcripts, theaters, types…"
-              className="w-full rounded-2xl border border-white/[0.06] bg-black/30 py-3.5 pl-11 pr-4 text-sm text-[var(--foreground)] outline-none ring-0 transition placeholder:text-[var(--muted)] focus:border-teal-500/40 focus:bg-black/40 focus:shadow-[0_0_0_3px_rgba(45,212,191,0.12)]"
+              className="w-full rounded-2xl border border-[var(--border)] bg-[var(--background-elev)] py-3.5 pl-11 pr-4 text-[14px] text-[var(--foreground)] outline-none ring-0 transition placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)]"
             />
           </div>
           <div className="flex shrink-0 gap-2 sm:pr-1">
             <button
               type="submit"
-              className="rounded-2xl bg-gradient-to-r from-white/12 to-white/[0.06] px-6 py-3 text-sm font-medium text-[var(--foreground)] ring-1 ring-white/10 transition hover:from-white/18 hover:to-white/10"
+              className="rounded-2xl bg-[var(--foreground)] px-6 py-3 text-[13px] font-medium text-[var(--background-elev)] shadow-[var(--shadow-sm)] transition hover:bg-[var(--muted-strong)]"
             >
               Search
             </button>
@@ -63,10 +63,10 @@ export function SearchFilters({
         </div>
 
         <FilterDetails defaultOpen={hasAdvanced}>
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl px-2 py-2 text-sm text-[var(--muted)] transition hover:text-[var(--foreground)]">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl px-2 py-2 text-[13px] text-[var(--muted-strong)] transition hover:text-[var(--foreground)]">
             <span className="flex items-center gap-2">
               <span
-                className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-white/[0.05] text-teal-400/90 ring-1 ring-white/10"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-[var(--surface)] text-[var(--accent)] ring-1 ring-[var(--border)]"
                 aria-hidden
               >
                 <svg
@@ -92,13 +92,13 @@ export function SearchFilters({
 
           <div className="grid gap-4 px-2 pb-3 pt-4 sm:grid-cols-2 lg:grid-cols-4">
             <label className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-[var(--muted)]">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
                 Theater
               </span>
               <select
                 name="front"
                 defaultValue={filters.frontSlug ?? ""}
-                className="rounded-xl border border-white/[0.08] bg-black/35 px-3 py-2.5 text-sm outline-none transition focus:border-teal-500/40 focus:shadow-[0_0_0_3px_rgba(45,212,191,0.1)]"
+                className="rounded-xl border border-[var(--border)] bg-[var(--background-elev)] px-3 py-2.5 text-[13px] text-[var(--foreground)] outline-none transition focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)]"
               >
                 <option value="">Any</option>
                 {stats.byFront.map((x) => (
@@ -109,13 +109,13 @@ export function SearchFilters({
               </select>
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-[var(--muted)]">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
                 Opponent
               </span>
               <select
                 name="opponent"
                 defaultValue={filters.opponentSlug ?? ""}
-                className="rounded-xl border border-white/[0.08] bg-black/35 px-3 py-2.5 text-sm outline-none transition focus:border-teal-500/40 focus:shadow-[0_0_0_3px_rgba(45,212,191,0.1)]"
+                className="rounded-xl border border-[var(--border)] bg-[var(--background-elev)] px-3 py-2.5 text-[13px] text-[var(--foreground)] outline-none transition focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)]"
               >
                 <option value="">Any</option>
                 {stats.byOpponent.map((x) => (
@@ -126,13 +126,13 @@ export function SearchFilters({
               </select>
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-[var(--muted)]">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
                 Footage type
               </span>
               <select
                 name="type"
                 defaultValue={filters.typeSlug ?? ""}
-                className="rounded-xl border border-white/[0.08] bg-black/35 px-3 py-2.5 text-sm outline-none transition focus:border-teal-500/40 focus:shadow-[0_0_0_3px_rgba(45,212,191,0.1)]"
+                className="rounded-xl border border-[var(--border)] bg-[var(--background-elev)] px-3 py-2.5 text-[13px] text-[var(--foreground)] outline-none transition focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)]"
               >
                 <option value="">Any</option>
                 {stats.byType.map((x) => (
@@ -143,7 +143,7 @@ export function SearchFilters({
               </select>
             </label>
             <div className="flex flex-col gap-2 sm:col-span-2 lg:col-span-1">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-[var(--muted)]">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
                 Date range
               </span>
               <div className="flex flex-wrap gap-2">
@@ -151,22 +151,22 @@ export function SearchFilters({
                   type="date"
                   name="from"
                   defaultValue={filters.dateFrom?.slice(0, 10) ?? ""}
-                  className="min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-black/35 px-3 py-2.5 text-sm outline-none focus:border-teal-500/40"
+                  className="min-w-0 flex-1 rounded-xl border border-[var(--border)] bg-[var(--background-elev)] px-3 py-2.5 text-[13px] text-[var(--foreground)] outline-none transition focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)]"
                 />
                 <input
                   type="date"
                   name="to"
                   defaultValue={filters.dateTo?.slice(0, 10) ?? ""}
-                  className="min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-black/35 px-3 py-2.5 text-sm outline-none focus:border-teal-500/40"
+                  className="min-w-0 flex-1 rounded-xl border border-[var(--border)] bg-[var(--background-elev)] px-3 py-2.5 text-[13px] text-[var(--foreground)] outline-none transition focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)]"
                 />
               </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-white/[0.05] px-2 pb-2 pt-3">
+          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[var(--border)] px-2 pb-2 pt-3">
             <button
               type="submit"
-              className="rounded-full bg-gradient-to-r from-teal-500/90 to-emerald-600/80 px-5 py-2 text-xs font-semibold uppercase tracking-wide text-[#042f2e] shadow-lg shadow-teal-500/10 transition hover:brightness-110"
+              className="rounded-full bg-[var(--foreground)] px-5 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--background-elev)] shadow-[var(--shadow-sm)] transition hover:bg-[var(--muted-strong)]"
             >
               Apply filters
             </button>

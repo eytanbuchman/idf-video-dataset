@@ -52,23 +52,26 @@ export function VideoListClient({
   return (
     <div className="space-y-3">
       {pageVideos.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 backdrop-blur-sm">
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--background-elev)] px-3 py-2 shadow-[var(--shadow-sm)]">
           <button
             type="button"
             onClick={selectAllPage}
-            className="min-h-[44px] rounded-lg px-3 py-2 text-xs text-[var(--muted)] transition hover:bg-white/[0.06] hover:text-[var(--foreground)]"
+            className="min-h-[40px] rounded-lg px-3 py-2 text-[12px] font-medium text-[var(--muted-strong)] transition hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
           >
             Select page
           </button>
           <button
             type="button"
             onClick={clear}
-            className="min-h-[44px] rounded-lg px-3 py-2 text-xs text-[var(--muted)] transition hover:bg-white/[0.06] hover:text-[var(--foreground)]"
+            className="min-h-[40px] rounded-lg px-3 py-2 text-[12px] font-medium text-[var(--muted-strong)] transition hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
           >
             Clear
           </button>
-          <span className="mx-1 h-4 w-px bg-white/10" aria-hidden />
-          <span className="text-xs text-[var(--muted)]">
+          <span
+            className="mx-1 h-4 w-px bg-[var(--border-strong)]"
+            aria-hidden
+          />
+          <span className="text-[12px] text-[var(--muted)]">
             <span className="tabular-nums text-[var(--foreground)]">
               {selected.size}
             </span>{" "}
@@ -78,14 +81,14 @@ export function VideoListClient({
             <button
               type="button"
               onClick={exportCsv}
-              className="ml-auto min-h-[44px] rounded-full bg-gradient-to-r from-teal-600/70 to-emerald-800/60 px-4 py-2 text-xs font-semibold text-white/95 shadow-lg shadow-black/20 transition hover:brightness-110"
+              className="ml-auto inline-flex min-h-[40px] items-center rounded-full bg-[var(--foreground)] px-4 py-2 text-[12px] font-semibold text-[var(--background-elev)] shadow-[var(--shadow-sm)] transition hover:bg-[var(--muted-strong)]"
             >
               {exportLabel}
             </button>
           )}
         </div>
       )}
-      <div className="space-y-2">
+      <div className="space-y-3">
         {pageVideos.map((v) => (
           <VideoCard
             key={v.slug}

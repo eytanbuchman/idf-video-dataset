@@ -5,6 +5,8 @@ import { Suspense } from "react";
 import { JsonLd } from "@/components/json-ld";
 import { ResultsWithDrawer } from "@/components/results-with-drawer";
 import { ResultsFallback } from "@/components/results-fallback";
+import { buildTagIndex } from "@/lib/link-tags";
+import { getCategoryCopy } from "@/lib/category-copy";
 import { filterByPillar, sortByDateDesc } from "@/lib/filter-videos";
 import { getSiteUrl } from "@/lib/site";
 import type { Axis } from "@/lib/types";
@@ -81,9 +83,8 @@ export default async function PillarPage({ params, searchParams }: Props) {
 
   const base = getSiteUrl().origin;
   const stats = getLibraryStats();
-  const dates = list.map((v) => v.date).filter(Boolean).sort();
-  const dateMin = dates[0];
-  const dateMax = dates[dates.length - 1];
+  const tags = buildTagIndex(stats);
+  const copy = getCategoryCopy(axis, categorySlug, label);
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
@@ -124,71 +125,36 @@ export default async function PillarPage({ params, searchParams }: Props) {
       <JsonLd data={breadcrumbLd} />
       <JsonLd data={collectionLd} />
 
-      <nav className="mb-6 text-sm text-[var(--muted)]">
-        <Link href="/" className="hover:text-teal-300/90">
+      <nav className="mb-6 text-[13px] text-[var(--muted)]">
+        <Link href="/" className="hover:text-[var(--accent)]">
           Home
         </Link>
-        <span className="mx-2 text-white/20">/</span>
-        <Link href="/browse" className="hover:text-teal-300/90">
+        <span className="mx-2 text-[var(--border-strong)]">/</span>
+        <Link href="/browse" className="hover:text-[var(--accent)]">
           Browse
         </Link>
-        <span className="mx-2 text-white/20">/</span>
+        <span className="mx-2 text-[var(--border-strong)]">/</span>
         <Link
           href={`/browse/${axis}`}
-          className="hover:text-teal-300/90"
+          className="hover:text-[var(--accent)]"
         >
           {axisLabel(axis)}
         </Link>
-        <span className="mx-2 text-white/20">/</span>
+        <span className="mx-2 text-[var(--border-strong)]">/</span>
         <span className="text-[var(--foreground)]">{label}</span>
       </nav>
 
-      <header className="mb-10 max-w-3xl">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-          {axisLabel(axis)}
+      <header className="mb-12 max-w-3xl">
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
+          {axisLabel(axis)} · {copy.tagline}
         </p>
-        <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl tracking-tight md:text-5xl">
-          <span className="text-gradient">{label}</span>
+        <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl tracking-[-0.015em] text-[var(--foreground)] md:text-5xl">
+          {label}
         </h1>
-        <p className="mt-4 text-[var(--muted)]">
-          <strong className="text-[var(--foreground)]">
-            {list.length.toLocaleString()}
-          </strong>{" "}
-          clips in this category
-          {dateMin && dateMax && (
-            <>
-              {" "}
-              · dated {dateMin.slice(0, 10)} → {dateMax.slice(0, 10)}
-            </>
-          )}
-          . Streams use the official Azure CDN URLs from your dataset; this
-          page only lists metadata.
+        <p className="mt-5 text-[15px] leading-[1.7] text-[var(--muted-strong)] md:text-[16px]">
+          {copy.intro}
         </p>
       </header>
-
-      <section className="mb-10 rounded-2xl border border-white/[0.08] bg-[var(--glass)] p-6 shadow-xl shadow-black/20 backdrop-blur-xl">
-        <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-          Dataset context
-        </h2>
-        <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">
-          The full library holds {stats.total.toLocaleString()} indexed videos
-          across {stats.byFront.length} theaters, {stats.byOpponent.length}{" "}
-          opponent labels, and {stats.byType.length} footage types. Use the
-          home search to combine this category with other filters, or export
-          selected rows as CSV.
-        </p>
-        <p className="mt-4 flex flex-wrap gap-3 text-sm">
-          <Link href="/" className="text-teal-300/90 underline-offset-2 hover:underline">
-            ← Back to search
-          </Link>
-          <Link
-            href={`/browse/${axis}`}
-            className="text-teal-300/90 underline-offset-2 hover:underline"
-          >
-            All {axisLabel(axis)} values
-          </Link>
-        </p>
-      </section>
 
       <Suspense fallback={<ResultsFallback />}>
         <ResultsWithDrawer
@@ -199,6 +165,7 @@ export default async function PillarPage({ params, searchParams }: Props) {
           totalPages={totalPages}
           pageSize={PAGE_SIZE}
           totalMatching={list.length}
+          tags={tags}
         />
       </Suspense>
     </div>

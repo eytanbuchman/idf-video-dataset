@@ -9,14 +9,14 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
         {items.map((c, i) => (
           <li key={`${c.label}-${i}`} className="flex items-center gap-2">
             {i > 0 && (
-              <span className="text-white/20" aria-hidden>
+              <span className="text-[var(--border-strong)]" aria-hidden>
                 /
               </span>
             )}
             {c.href ? (
               <Link
                 href={c.href}
-                className="text-[var(--muted)] transition-colors hover:text-teal-300/90"
+                className="text-[var(--muted)] transition-colors hover:text-[var(--accent)]"
               >
                 {c.label}
               </Link>

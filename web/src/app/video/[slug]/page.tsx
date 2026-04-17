@@ -7,9 +7,11 @@ import { CopyPageUrl } from "@/components/copy-page-url";
 import { getStreamUrl } from "@/lib/video-url";
 import { getSiteUrl } from "@/lib/site";
 import { AXES } from "@/lib/types";
+import { buildTagIndex, renderLinkedText } from "@/lib/link-tags";
 import {
   getVideoBySlug,
   getLabelForAxis,
+  getLibraryStats,
   getSlugForAxis,
   videos,
 } from "@/lib/videos";
@@ -50,6 +52,7 @@ export default async function VideoPage({ params }: Props) {
 
   const streamUrl = getStreamUrl(v.resolved_url);
   const base = getSiteUrl().origin;
+  const tags = buildTagIndex(getLibraryStats());
 
   const related = videos
     .filter((x) => x.slug !== v.slug && x.frontSlug === v.frontSlug)
@@ -107,11 +110,11 @@ export default async function VideoPage({ params }: Props) {
       <header className="mt-8">
         <time
           dateTime={v.date}
-          className="font-mono text-sm text-[var(--muted)]"
+          className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]"
         >
           {v.date?.slice(0, 10) ?? "—"}
         </time>
-        <h1 className="mt-4 font-[family-name:var(--font-display)] text-3xl leading-tight tracking-tight text-[var(--foreground)] md:text-4xl">
+        <h1 className="mt-4 font-[family-name:var(--font-display)] text-3xl leading-tight tracking-[-0.015em] text-[var(--foreground)] md:text-4xl">
           {excerpt(v.message_text, 120)}
         </h1>
         <div className="mt-6 flex flex-wrap gap-2">
@@ -119,7 +122,7 @@ export default async function VideoPage({ params }: Props) {
             <Link
               key={axis}
               href={`/browse/${axis}/${getSlugForAxis(v, axis)}`}
-              className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-[var(--foreground)] ring-1 ring-white/[0.04] transition hover:border-teal-500/40 hover:bg-teal-500/10"
+              className="rounded-full border border-[var(--border)] bg-[var(--background-elev)] px-3 py-1.5 text-[12px] font-medium text-[var(--muted-strong)] shadow-[var(--shadow-sm)] transition hover:border-[var(--border-strong)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
             >
               {axis === "front" && "Theater: "}
               {axis === "opponent" && "Opponent: "}
@@ -132,30 +135,28 @@ export default async function VideoPage({ params }: Props) {
 
       <div className="mt-10 grid gap-10 lg:grid-cols-5">
         <div className="lg:col-span-3">
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-500/20 via-violet-500/10 to-rose-500/15 p-[1px] shadow-2xl shadow-black/50">
-            <div className="overflow-hidden rounded-2xl bg-[#050608]">
-              <video
-                controls
-                playsInline
-                preload="metadata"
-                className="aspect-video w-full"
-                src={streamUrl}
-              />
-            </div>
+          <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[#0a0b0f] shadow-[var(--shadow-md)]">
+            <video
+              controls
+              playsInline
+              preload="metadata"
+              className="aspect-video w-full bg-black"
+              src={streamUrl}
+            />
           </div>
-          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
             <a
               href={streamUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-teal-300/90 underline-offset-4 hover:underline"
+              className="text-[13px] font-medium text-[var(--accent)] underline-offset-4 hover:underline"
             >
               Open stream
             </a>
             <a
               href={streamUrl}
               download={v.video_file || "video.mp4"}
-              className="text-sm text-teal-300/90 underline-offset-4 hover:underline"
+              className="text-[13px] font-medium text-[var(--accent)] underline-offset-4 hover:underline"
             >
               Download
             </a>
@@ -164,17 +165,17 @@ export default async function VideoPage({ params }: Props) {
         </div>
 
         <aside className="lg:col-span-2">
-          <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-            Full text
+          <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
+            Initial Press Release Update
           </h2>
-          <div className="mt-3 max-h-[min(70vh,520px)] overflow-y-auto rounded-2xl border border-white/[0.08] bg-[var(--glass)] p-5 text-sm leading-relaxed shadow-inner shadow-black/20 backdrop-blur-md">
-            <p className="whitespace-pre-wrap text-[var(--foreground)]/95">
-              {v.message_text}
+          <div className="mt-3 max-h-[min(70vh,520px)] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 text-[14px] leading-[1.7]">
+            <p className="whitespace-pre-wrap text-[var(--foreground)]">
+              {renderLinkedText(v.message_text, tags)}
             </p>
           </div>
-          <dl className="mt-6 space-y-2 font-mono text-xs text-[var(--muted)]">
+          <dl className="mt-6 space-y-2 font-mono text-[11px] text-[var(--muted)]">
             <div>
-              <dt className="inline text-[var(--muted)]">message_id </dt>
+              <dt className="inline">message_id </dt>
               <dd className="inline text-[var(--foreground)]">
                 {v.message_id}
               </dd>
@@ -184,7 +185,7 @@ export default async function VideoPage({ params }: Props) {
               <dd className="inline break-all">
                 <a
                   href={v.bitly_url}
-                  className="text-teal-300/90 underline-offset-2 hover:underline"
+                  className="text-[var(--accent)] underline-offset-2 hover:underline"
                 >
                   {v.bitly_url}
                 </a>
@@ -195,8 +196,8 @@ export default async function VideoPage({ params }: Props) {
       </div>
 
       {related.length > 0 && (
-        <section className="mt-16 border-t border-white/[0.06] pt-10">
-          <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--foreground)]">
+        <section className="mt-16 border-t border-[var(--border)] pt-10">
+          <h2 className="font-[family-name:var(--font-display)] text-2xl tracking-[-0.01em] text-[var(--foreground)]">
             More from {v.front}
           </h2>
           <ul className="mt-6 space-y-3">
@@ -204,11 +205,11 @@ export default async function VideoPage({ params }: Props) {
               <li key={r.slug}>
                 <Link
                   href={`/video/${r.slug}`}
-                  className="text-teal-300/90 underline-offset-2 hover:underline"
+                  className="text-[14px] text-[var(--accent)] underline-offset-2 hover:underline"
                 >
                   {excerpt(r.message_text, 90)}
                 </Link>
-                <span className="ml-2 font-mono text-xs text-[var(--muted)]">
+                <span className="ml-2 font-mono text-[11px] text-[var(--muted)]">
                   {r.date?.slice(0, 10)}
                 </span>
               </li>

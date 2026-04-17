@@ -9,8 +9,10 @@ import {
   type ListFilters,
 } from "@/lib/filter-videos";
 import { getLibraryStats, videos } from "@/lib/videos";
+import { buildTagIndex } from "@/lib/link-tags";
 
 const PAGE_SIZE = 40;
+const INITIAL_LIMIT = 10;
 
 function parseFilters(sp: Record<string, string | string[] | undefined>): {
   filters: ListFilters;
@@ -42,13 +44,25 @@ export default async function HomePage({
   const sp = await searchParams;
   const { filters, page } = parseFilters(sp);
   const stats = getLibraryStats();
-  const list = sortByDateDesc(filterVideos(videos, filters));
-  const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const slice = list.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE,
+  const tags = buildTagIndex(stats);
+
+  const hasAnyFilter = Boolean(
+    filters.q ||
+      filters.frontSlug ||
+      filters.opponentSlug ||
+      filters.typeSlug ||
+      filters.dateFrom ||
+      filters.dateTo,
   );
+
+  const list = sortByDateDesc(filterVideos(videos, filters));
+  const totalPages = hasAnyFilter
+    ? Math.max(1, Math.ceil(list.length / PAGE_SIZE))
+    : 1;
+  const safePage = Math.min(page, totalPages);
+  const slice = hasAnyFilter
+    ? list.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+    : list.slice(0, INITIAL_LIMIT);
 
   const spForPager: Record<string, string | undefined> = {
     q: filters.q,
@@ -78,6 +92,8 @@ export default async function HomePage({
             totalPages={totalPages}
             pageSize={PAGE_SIZE}
             totalMatching={list.length}
+            initial={!hasAnyFilter}
+            tags={tags}
           />
         </Suspense>
       </section>

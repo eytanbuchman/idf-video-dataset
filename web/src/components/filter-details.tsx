@@ -14,7 +14,7 @@ export function FilterDetails({
     <details
       open={open}
       onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
-      className="group/details mt-2 border-t border-white/[0.06] pt-2"
+      className="group/details mt-2 border-t border-[var(--border)] pt-2"
     >
       {children}
     </details>

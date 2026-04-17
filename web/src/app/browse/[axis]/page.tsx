@@ -30,26 +30,26 @@ export default async function AxisHubPage({ params }: Props) {
 
   return (
     <div>
-      <nav className="mb-6 text-sm text-[var(--muted)]">
-        <Link href="/browse" className="hover:text-teal-300/90">
+      <nav className="mb-6 text-[13px] text-[var(--muted)]">
+        <Link href="/browse" className="hover:text-[var(--accent)]">
           Browse
         </Link>
-        <span className="mx-2 text-white/20">/</span>
+        <span className="mx-2 text-[var(--border-strong)]">/</span>
         <span className="text-[var(--foreground)]">{axisLabel(axis)}</span>
       </nav>
-      <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-tight">
-        <span className="text-gradient">{axisLabel(axis)}</span>
+      <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-[-0.015em] text-[var(--foreground)]">
+        {axisLabel(axis)}
       </h1>
-      <p className="mt-4 max-w-2xl text-[var(--muted)]">
+      <p className="mt-4 max-w-2xl text-[var(--muted-strong)]">
         {list.length} distinct values. Open a category to see every matching
         clip, stream from Azure, or export a CSV bundle.
       </p>
-      <ul className="mt-10 columns-1 gap-x-8 text-sm md:columns-2">
+      <ul className="mt-10 columns-1 gap-x-8 text-[14px] md:columns-2">
         {list.map((row) => (
           <li key={row.slug} className="mb-2 break-inside-avoid">
             <Link
               href={`/browse/${axis}/${row.slug}`}
-              className="text-teal-300/90 underline-offset-2 hover:underline"
+              className="text-[var(--accent)] underline-offset-2 hover:underline"
             >
               {row.label}
             </Link>

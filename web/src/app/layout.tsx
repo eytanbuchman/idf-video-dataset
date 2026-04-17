@@ -63,8 +63,8 @@ export default function RootLayout({
         <main className="relative z-10 mx-auto w-full max-w-6xl flex-1 px-4 py-8 pb-12 sm:px-6 sm:py-12 md:py-14">
           {children}
         </main>
-        <footer className="relative z-10 border-t border-white/[0.05] px-4 py-10 text-center sm:px-6">
-          <p className="mx-auto max-w-lg text-xs leading-relaxed text-[var(--muted)]">
+        <footer className="relative z-10 border-t border-[var(--border)] px-4 py-12 text-center sm:px-6">
+          <p className="mx-auto max-w-lg text-[12px] leading-relaxed text-[var(--muted)]">
             Built for people who need to locate official footage and metadata
             to use responsibly. Video streams come from public CDN endpoints;
             always verify context at the source.
@@ -74,7 +74,7 @@ export default function RootLayout({
               href="https://www.idf.il/en"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-teal-400/70 underline-offset-4 transition hover:text-teal-300/90 hover:underline"
+              className="text-[13px] text-[var(--accent)] underline-offset-4 transition hover:underline"
             >
               IDF website — idf.il/en
             </a>

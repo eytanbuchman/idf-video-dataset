@@ -12,7 +12,7 @@ export function CopyPageUrl() {
         setDone(true);
         setTimeout(() => setDone(false), 2000);
       }}
-      className="text-sm text-[var(--muted)] underline-offset-4 transition hover:text-teal-200/90"
+      className="min-h-[40px] text-[13px] text-[var(--muted-strong)] underline-offset-4 transition hover:text-[var(--foreground)] hover:underline"
     >
       {done ? "Copied" : "Copy page link"}
     </button>

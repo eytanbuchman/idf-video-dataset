@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { VideoRecord } from "@/lib/types";
+import type { TagRef } from "@/lib/link-tags";
 import { VideoDrawer } from "@/components/video-drawer";
 import { VideoListClient } from "@/components/video-list-client";
 import { Pagination } from "@/components/pagination";
@@ -15,6 +16,8 @@ export function ResultsWithDrawer({
   totalPages,
   pageSize,
   totalMatching,
+  initial = false,
+  tags = [],
 }: {
   pageVideos: VideoRecord[];
   basePath: string;
@@ -23,6 +26,8 @@ export function ResultsWithDrawer({
   totalPages: number;
   pageSize: number;
   totalMatching: number;
+  initial?: boolean;
+  tags?: TagRef[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -83,30 +88,44 @@ export function ResultsWithDrawer({
 
   return (
     <>
-      <div className="mb-6 flex flex-col gap-2 border-b border-white/[0.06] pb-4 sm:flex-row sm:items-end sm:justify-between">
-        <p className="font-mono text-xs uppercase tracking-wider text-[var(--muted)]">
-          Results
-        </p>
-        <p className="text-sm text-[var(--muted)]">
-          <span className="tabular-nums text-[var(--foreground)]">
-            {from}–{to}
-          </span>
-          <span className="mx-1.5 text-white/20">/</span>
-          <span className="tabular-nums">{totalMatching.toLocaleString()}</span>
-        </p>
-      </div>
+      {initial ? (
+        <div className="mb-5 flex items-baseline justify-between gap-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
+            Latest clips
+          </p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
+            Search to see more
+          </p>
+        </div>
+      ) : (
+        <div className="mb-6 flex flex-col gap-2 border-b border-[var(--border)] pb-4 sm:flex-row sm:items-end sm:justify-between">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
+            Results
+          </p>
+          <p className="text-sm text-[var(--muted-strong)]">
+            <span className="tabular-nums text-[var(--foreground)]">
+              {from}–{to}
+            </span>
+            <span className="mx-1.5 text-[var(--border-strong)]">/</span>
+            <span className="tabular-nums">{totalMatching.toLocaleString()}</span>
+          </p>
+        </div>
+      )}
       <VideoListClient pageVideos={pageVideos} onVideoOpen={openVideo} />
-      <Pagination
-        basePath={basePath}
-        searchParams={pagerParams}
-        page={page}
-        totalPages={totalPages}
-      />
+      {!initial && (
+        <Pagination
+          basePath={basePath}
+          searchParams={pagerParams}
+          page={page}
+          totalPages={totalPages}
+        />
+      )}
       <VideoDrawer
         video={drawerVideo}
         open={drawerOpen}
         loading={drawerLoading}
         onClose={closeDrawer}
+        tags={tags}
       />
     </>
   );
