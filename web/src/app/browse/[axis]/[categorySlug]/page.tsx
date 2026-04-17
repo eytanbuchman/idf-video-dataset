@@ -10,14 +10,12 @@ import { getCategoryCopy } from "@/lib/category-copy";
 import { filterByPillar, sortByDateDesc } from "@/lib/filter-videos";
 import { getSiteUrl } from "@/lib/site";
 import type { Axis } from "@/lib/types";
-import { AXES } from "@/lib/types";
 import {
   axisLabel,
+  getAllVideos,
   getLabelForAxis,
-  getSlugForAxis,
   getLibraryStats,
   isAxis,
-  videos,
 } from "@/lib/videos";
 
 const PAGE_SIZE = 40;
@@ -27,32 +25,18 @@ type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export async function generateStaticParams() {
-  const seen = new Set<string>();
-  const out: { axis: string; categorySlug: string }[] = [];
-  for (const v of videos) {
-    for (const axis of AXES) {
-      const categorySlug = getSlugForAxis(v, axis);
-      const key = `${axis}:${categorySlug}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({ axis, categorySlug });
-    }
-  }
-  return out;
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { axis: raw, categorySlug } = await params;
   if (!isAxis(raw)) return { title: "Not found" };
   const axis = raw as Axis;
+  const videos = await getAllVideos();
   const list = filterByPillar(videos, axis, categorySlug);
   const label =
     list[0] != null ? getLabelForAxis(list[0], axis) : categorySlug;
   const title = `${label} · ${axisLabel(axis)}`;
   return {
     title,
-    description: `${list.length} IDF video clips tagged “${label}” under ${axisLabel(axis).toLowerCase()}. Stream or export metadata.`,
+    description: `${list.length} IDF video clips tagged "${label}" under ${axisLabel(axis).toLowerCase()}. Stream or export metadata.`,
     openGraph: { title, description: `${list.length} clips` },
   };
 }
@@ -63,6 +47,7 @@ export default async function PillarPage({ params, searchParams }: Props) {
   if (!isAxis(raw)) notFound();
   const axis = raw as Axis;
 
+  const videos = await getAllVideos();
   const list = sortByDateDesc(filterByPillar(videos, axis, categorySlug));
   if (list.length === 0) notFound();
 
@@ -82,9 +67,9 @@ export default async function PillarPage({ params, searchParams }: Props) {
   );
 
   const base = getSiteUrl().origin;
-  const stats = getLibraryStats();
+  const stats = await getLibraryStats();
   const tags = buildTagIndex(stats);
-  const copy = getCategoryCopy(axis, categorySlug, label);
+  const copy = await getCategoryCopy(axis, categorySlug, label);
 
   const breadcrumbLd = {
     "@context": "https://schema.org",

@@ -1,9 +1,9 @@
 import type { MetadataRoute } from "next";
 import { getSiteUrl } from "@/lib/site";
 import { AXES } from "@/lib/types";
-import { videos } from "@/lib/videos";
+import { getAllVideos } from "@/lib/videos";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getSiteUrl().origin;
   const now = new Date();
 
@@ -20,6 +20,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.85,
     });
   }
+
+  const videos = await getAllVideos();
 
   const pillarSeen = new Set<string>();
   for (const v of videos) {

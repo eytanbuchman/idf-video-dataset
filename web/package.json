@@ -5,12 +5,14 @@
   "scripts": {
     "dev": "next dev",
     "data:build": "tsx scripts/build-videos-data.ts",
-    "prebuild": "npm run data:build",
+    "db:seed": "tsx scripts/seed-db.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "jose": "^6.2.2",
     "next": "16.2.4",
     "react": "19.2.4",
     "react-dom": "19.2.4"

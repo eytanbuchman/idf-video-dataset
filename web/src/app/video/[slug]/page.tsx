@@ -9,11 +9,11 @@ import { getSiteUrl } from "@/lib/site";
 import { AXES } from "@/lib/types";
 import { buildTagIndex, renderLinkedText } from "@/lib/link-tags";
 import {
-  getVideoBySlug,
+  getAllVideos,
   getLabelForAxis,
   getLibraryStats,
   getSlugForAxis,
-  videos,
+  getVideoBySlug,
 } from "@/lib/videos";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -24,13 +24,9 @@ function excerpt(text: string, max = 160): string {
   return `${t.slice(0, max)}…`;
 }
 
-export async function generateStaticParams() {
-  return videos.map((v) => ({ slug: v.slug }));
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const v = getVideoBySlug(slug);
+  const v = await getVideoBySlug(slug);
   if (!v) return { title: "Not found" };
   const title = excerpt(v.message_text, 72);
   const description = excerpt(v.message_text, 155);
@@ -47,14 +43,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function VideoPage({ params }: Props) {
   const { slug } = await params;
-  const v = getVideoBySlug(slug);
+  const v = await getVideoBySlug(slug);
   if (!v) notFound();
 
   const streamUrl = getStreamUrl(v.resolved_url);
   const base = getSiteUrl().origin;
-  const tags = buildTagIndex(getLibraryStats());
+  const stats = await getLibraryStats();
+  const tags = buildTagIndex(stats);
 
-  const related = videos
+  const allVideos = await getAllVideos();
+  const related = allVideos
     .filter((x) => x.slug !== v.slug && x.frontSlug === v.frontSlug)
     .slice(0, 8);
 

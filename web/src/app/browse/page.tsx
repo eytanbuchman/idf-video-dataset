@@ -9,8 +9,8 @@ export const metadata: Metadata = {
     "Explore IDF video releases by theater, opponent, or footage type — pillar pages with full lists and filters.",
 };
 
-export default function BrowseIndexPage() {
-  const stats = getLibraryStats();
+export default async function BrowseIndexPage() {
+  const stats = await getLibraryStats();
   return (
     <div>
       <h1 className="font-[family-name:var(--font-display)] text-[clamp(2rem,5vw,3rem)] tracking-[-0.015em] text-[var(--foreground)]">

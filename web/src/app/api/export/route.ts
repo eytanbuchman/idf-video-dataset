@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
   const lines: string[] = [CSV_HEADER];
   for (const slug of slugs) {
-    const v = getVideoBySlug(slug);
+    const v = await getVideoBySlug(slug);
     if (!v) continue;
     const row = [
       String(v.message_id),

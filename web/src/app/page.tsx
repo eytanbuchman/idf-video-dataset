@@ -8,7 +8,7 @@ import {
   sortByDateDesc,
   type ListFilters,
 } from "@/lib/filter-videos";
-import { getLibraryStats, videos } from "@/lib/videos";
+import { getAllVideos, getLibraryStats } from "@/lib/videos";
 import { buildTagIndex } from "@/lib/link-tags";
 
 const PAGE_SIZE = 40;
@@ -43,7 +43,10 @@ export default async function HomePage({
 }) {
   const sp = await searchParams;
   const { filters, page } = parseFilters(sp);
-  const stats = getLibraryStats();
+  const [stats, allVideos] = await Promise.all([
+    getLibraryStats(),
+    getAllVideos(),
+  ]);
   const tags = buildTagIndex(stats);
 
   const hasAnyFilter = Boolean(
@@ -55,7 +58,7 @@ export default async function HomePage({
       filters.dateTo,
   );
 
-  const list = sortByDateDesc(filterVideos(videos, filters));
+  const list = sortByDateDesc(filterVideos(allVideos, filters));
   const totalPages = hasAnyFilter
     ? Math.max(1, Math.ceil(list.length / PAGE_SIZE))
     : 1;

@@ -20,7 +20,7 @@ export default async function AxisHubPage({ params }: Props) {
   const { axis: raw } = await params;
   if (!isAxis(raw)) notFound();
   const axis = raw as Axis;
-  const stats = getLibraryStats();
+  const stats = await getLibraryStats();
   const list =
     axis === "front"
       ? stats.byFront

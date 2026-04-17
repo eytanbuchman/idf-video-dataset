@@ -1,12 +1,93 @@
+import { cacheTag } from "next/cache";
 import type { Axis, VideoRecord } from "./types";
 import { AXES } from "./types";
-import videosData from "@/data/videos.json";
+import { sql } from "./db";
 
-export const videos = videosData as VideoRecord[];
+export const CACHE_TAG_VIDEOS = "videos";
+export const CACHE_TAG_CATEGORIES = "categories";
 
-export function getVideoBySlug(slug: string): VideoRecord | undefined {
-  return videos.find((v) => v.slug === slug);
+type VideoRow = {
+  slug: string;
+  id: string;
+  message_id: string | number;
+  date: string;
+  bitly_url: string;
+  resolved_url: string;
+  video_file: string;
+  message_text: string;
+  front: string;
+  opponent: string;
+  type: string;
+  front_slug: string;
+  opponent_slug: string;
+  type_slug: string;
+};
+
+function mapRow(r: VideoRow): VideoRecord {
+  return {
+    id: r.id,
+    slug: r.slug,
+    message_id: typeof r.message_id === "string"
+      ? Number(r.message_id)
+      : r.message_id,
+    date: r.date ?? "",
+    bitly_url: r.bitly_url ?? "",
+    resolved_url: r.resolved_url ?? "",
+    video_file: r.video_file ?? "",
+    message_text: r.message_text ?? "",
+    front: r.front ?? "Unknown",
+    opponent: r.opponent ?? "Unknown",
+    type: r.type ?? "Unknown",
+    frontSlug: r.front_slug ?? "unknown",
+    opponentSlug: r.opponent_slug ?? "unknown",
+    typeSlug: r.type_slug ?? "unknown",
+  };
 }
+
+// ---------------------------------------------------------------------------
+// Data accessors (cached, tagged)
+// ---------------------------------------------------------------------------
+
+export async function getAllVideos(): Promise<VideoRecord[]> {
+  "use cache";
+  cacheTag(CACHE_TAG_VIDEOS);
+  const rows = (await sql()`
+    SELECT slug, id, message_id, date, bitly_url, resolved_url, video_file,
+           message_text, front, opponent, type,
+           front_slug, opponent_slug, type_slug
+    FROM videos
+    ORDER BY date DESC
+  `) as unknown as VideoRow[];
+  return rows.map(mapRow);
+}
+
+export async function getVideoBySlug(
+  slug: string,
+): Promise<VideoRecord | undefined> {
+  "use cache";
+  cacheTag(CACHE_TAG_VIDEOS);
+  const rows = (await sql()`
+    SELECT slug, id, message_id, date, bitly_url, resolved_url, video_file,
+           message_text, front, opponent, type,
+           front_slug, opponent_slug, type_slug
+    FROM videos WHERE slug = ${slug} LIMIT 1
+  `) as unknown as VideoRow[];
+  if (!rows[0]) return undefined;
+  return mapRow(rows[0]);
+}
+
+export async function getAllVideoSlugs(): Promise<{ slug: string }[]> {
+  "use cache";
+  cacheTag(CACHE_TAG_VIDEOS);
+  const rows = (await sql()`SELECT slug FROM videos`) as unknown as {
+    slug: string;
+  }[];
+  return rows.map((r) => ({ slug: r.slug }));
+}
+
+// ---------------------------------------------------------------------------
+// Pure helpers (no I/O)
+// ---------------------------------------------------------------------------
 
 export function isAxis(s: string): s is Axis {
   return AXES.includes(s as Axis);
@@ -47,6 +128,10 @@ export function getLabelForAxis(v: VideoRecord, axis: Axis): string {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Library stats (rollups across the dataset)
+// ---------------------------------------------------------------------------
+
 export type LibraryStats = {
   total: number;
   dateMin: string | null;
@@ -56,31 +141,70 @@ export type LibraryStats = {
   byType: { label: string; slug: string; count: number }[];
 };
 
-function rollup(
+async function rollupAxis(
   axis: Axis,
-): { label: string; slug: string; count: number }[] {
-  const map = new Map<string, { label: string; slug: string; count: number }>();
-  for (const v of videos) {
-    const slug = getSlugForAxis(v, axis);
-    const label = getLabelForAxis(v, axis);
-    const cur = map.get(slug);
-    if (cur) cur.count += 1;
-    else map.set(slug, { label, slug, count: 1 });
+): Promise<{ label: string; slug: string; count: number }[]> {
+  const slugCol =
+    axis === "front"
+      ? "front_slug"
+      : axis === "opponent"
+        ? "opponent_slug"
+        : "type_slug";
+  const labelCol = axis;
+
+  // Neon `sql` template can't interpolate identifiers. Switch on axis.
+  let rows: { label: string; slug: string; count: string | number }[];
+  if (axis === "front") {
+    rows = (await sql()`
+      SELECT front AS label, front_slug AS slug, COUNT(*)::int AS count
+      FROM videos GROUP BY front, front_slug ORDER BY count DESC
+    `) as unknown as typeof rows;
+  } else if (axis === "opponent") {
+    rows = (await sql()`
+      SELECT opponent AS label, opponent_slug AS slug, COUNT(*)::int AS count
+      FROM videos GROUP BY opponent, opponent_slug ORDER BY count DESC
+    `) as unknown as typeof rows;
+  } else {
+    rows = (await sql()`
+      SELECT type AS label, type_slug AS slug, COUNT(*)::int AS count
+      FROM videos GROUP BY type, type_slug ORDER BY count DESC
+    `) as unknown as typeof rows;
   }
-  return [...map.values()].sort((a, b) => b.count - a.count);
+  void slugCol;
+  void labelCol;
+  return rows.map((r) => ({
+    label: r.label,
+    slug: r.slug,
+    count: typeof r.count === "string" ? Number(r.count) : r.count,
+  }));
 }
 
-export function getLibraryStats(): LibraryStats {
-  const dates = videos
-    .map((v) => v.date)
-    .filter(Boolean)
-    .sort();
+export async function getLibraryStats(): Promise<LibraryStats> {
+  "use cache";
+  cacheTag(CACHE_TAG_VIDEOS);
+  cacheTag(CACHE_TAG_CATEGORIES);
+
+  const totalsRow = (await sql()`
+    SELECT COUNT(*)::int AS total,
+           MIN(date) AS date_min,
+           MAX(date) AS date_max
+    FROM videos
+  `) as unknown as { total: number; date_min: string | null; date_max: string | null }[];
+
+  const first = totalsRow[0] ?? { total: 0, date_min: null, date_max: null };
+
+  const [byFront, byOpponent, byType] = await Promise.all([
+    rollupAxis("front"),
+    rollupAxis("opponent"),
+    rollupAxis("type"),
+  ]);
+
   return {
-    total: videos.length,
-    dateMin: dates[0] ?? null,
-    dateMax: dates[dates.length - 1] ?? null,
-    byFront: rollup("front"),
-    byOpponent: rollup("opponent"),
-    byType: rollup("type"),
+    total: first.total,
+    dateMin: first.date_min,
+    dateMax: first.date_max,
+    byFront,
+    byOpponent,
+    byType,
   };
 }

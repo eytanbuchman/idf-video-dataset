@@ -1,0 +1,38 @@
+name: Retag videos
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Optional max rows to re-tag (leave blank for all)"
+        required: false
+        default: ""
+
+jobs:
+  retag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    concurrency:
+      group: retag
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Run retag
+        env:
+          PYTHONUNBUFFERED: "1"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SCRAPE_TRIGGERED_BY: "github-actions"
+        run: |
+          python retag.py \
+            ${{ github.event.inputs.limit && format('--limit {0}', github.event.inputs.limit) || '' }}
