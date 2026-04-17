@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { axisLabel, getLibraryStats, isAxis } from "@/lib/videos";
 import type { Axis } from "@/lib/types";
 
@@ -17,6 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function AxisHubPage({ params }: Props) {
+  await connection();
   const { axis: raw } = await params;
   if (!isAxis(raw)) notFound();
   const axis = raw as Axis;

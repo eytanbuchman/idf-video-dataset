@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { JsonLd } from "@/components/json-ld";
 import { ResultsWithDrawer } from "@/components/results-with-drawer";
@@ -42,6 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PillarPage({ params, searchParams }: Props) {
+  await connection();
   const { axis: raw, categorySlug } = await params;
   const sp = await searchParams;
   if (!isAxis(raw)) notFound();

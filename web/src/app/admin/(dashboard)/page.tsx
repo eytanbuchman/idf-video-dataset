@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { sql } from "@/lib/db";
 import { getLibraryStats } from "@/lib/videos";
 
@@ -36,6 +37,7 @@ function formatDateTime(iso: string | null): string {
 }
 
 export default async function AdminHome() {
+  await connection();
   const [stats, runs] = await Promise.all([
     getLibraryStats(),
     getRecentRuns(),

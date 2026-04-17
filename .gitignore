@@ -4,7 +4,7 @@
 node_modules/
 .next/
 out/
-videos/
+/videos/
 *.pyc
 __pycache__/
 .cache/

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { JsonLd } from "@/components/json-ld";
 import { CopyPageUrl } from "@/components/copy-page-url";
@@ -42,6 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function VideoPage({ params }: Props) {
+  await connection();
   const { slug } = await params;
   const v = await getVideoBySlug(slug);
   if (!v) notFound();

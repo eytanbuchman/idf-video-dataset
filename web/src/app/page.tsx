@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { HeroStats } from "@/components/hero-stats";
 import { SearchFilters } from "@/components/search-filters";
 import { ResultsWithDrawer } from "@/components/results-with-drawer";
@@ -41,6 +42,7 @@ export default async function HomePage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  await connection();
   const sp = await searchParams;
   const { filters, page } = parseFilters(sp);
   const [stats, allVideos] = await Promise.all([

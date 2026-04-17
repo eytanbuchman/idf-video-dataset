@@ -1,9 +1,11 @@
 import type { MetadataRoute } from "next";
+import { connection } from "next/server";
 import { getSiteUrl } from "@/lib/site";
 import { AXES } from "@/lib/types";
 import { getAllVideos } from "@/lib/videos";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  await connection();
   const base = getSiteUrl().origin;
   const now = new Date();
 

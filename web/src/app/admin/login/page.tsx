@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 
 export const metadata: Metadata = {
   title: "Admin sign in",
@@ -10,6 +11,7 @@ type Props = {
 };
 
 export default async function LoginPage({ searchParams }: Props) {
+  await connection();
   const sp = await searchParams;
   const nextRaw = Array.isArray(sp.next) ? sp.next[0] : sp.next;
   const errorRaw = Array.isArray(sp.error) ? sp.error[0] : sp.error;

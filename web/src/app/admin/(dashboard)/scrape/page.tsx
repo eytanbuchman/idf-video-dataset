@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { sql } from "@/lib/db";
 
 type RunRow = {
@@ -38,6 +39,7 @@ export default async function ScrapePage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  await connection();
   const sp = await searchParams;
   const queued = Array.isArray(sp.queued) ? sp.queued[0] : sp.queued;
 

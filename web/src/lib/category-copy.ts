@@ -1,7 +1,5 @@
-import { cacheTag } from "next/cache";
 import type { Axis } from "./types";
 import { sql } from "./db";
-import { CACHE_TAG_CATEGORIES } from "./videos";
 
 export type CategoryCopy = {
   /** Short, two-to-four-word positioning line shown as an eyebrow. */
@@ -39,8 +37,6 @@ function fallbackCopy(axis: Axis, label: string): CategoryCopy {
 }
 
 export async function getAllCategories(): Promise<CategoryRow[]> {
-  "use cache";
-  cacheTag(CACHE_TAG_CATEGORIES);
   const rows = (await sql()`
     SELECT axis, slug, label, tagline, intro
     FROM categories
@@ -53,8 +49,6 @@ export async function getCategory(
   axis: Axis,
   slug: string,
 ): Promise<CategoryRow | undefined> {
-  "use cache";
-  cacheTag(CACHE_TAG_CATEGORIES);
   const rows = (await sql()`
     SELECT axis, slug, label, tagline, intro
     FROM categories

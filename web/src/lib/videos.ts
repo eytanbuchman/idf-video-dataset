@@ -1,8 +1,9 @@
-import { cacheTag } from "next/cache";
 import type { Axis, VideoRecord } from "./types";
 import { AXES } from "./types";
 import { sql } from "./db";
 
+// Kept for api compatibility with admin-actions / api routes that reference
+// these symbols. Pages now render dynamically, so there's nothing to tag.
 export const CACHE_TAG_VIDEOS = "videos";
 export const CACHE_TAG_CATEGORIES = "categories";
 
@@ -49,8 +50,6 @@ function mapRow(r: VideoRow): VideoRecord {
 // ---------------------------------------------------------------------------
 
 export async function getAllVideos(): Promise<VideoRecord[]> {
-  "use cache";
-  cacheTag(CACHE_TAG_VIDEOS);
   const rows = (await sql()`
     SELECT slug, id, message_id, date, bitly_url, resolved_url, video_file,
            message_text, front, opponent, type,
@@ -64,8 +63,6 @@ export async function getAllVideos(): Promise<VideoRecord[]> {
 export async function getVideoBySlug(
   slug: string,
 ): Promise<VideoRecord | undefined> {
-  "use cache";
-  cacheTag(CACHE_TAG_VIDEOS);
   const rows = (await sql()`
     SELECT slug, id, message_id, date, bitly_url, resolved_url, video_file,
            message_text, front, opponent, type,
@@ -77,8 +74,6 @@ export async function getVideoBySlug(
 }
 
 export async function getAllVideoSlugs(): Promise<{ slug: string }[]> {
-  "use cache";
-  cacheTag(CACHE_TAG_VIDEOS);
   const rows = (await sql()`SELECT slug FROM videos`) as unknown as {
     slug: string;
   }[];
@@ -180,10 +175,6 @@ async function rollupAxis(
 }
 
 export async function getLibraryStats(): Promise<LibraryStats> {
-  "use cache";
-  cacheTag(CACHE_TAG_VIDEOS);
-  cacheTag(CACHE_TAG_CATEGORIES);
-
   const totalsRow = (await sql()`
     SELECT COUNT(*)::int AS total,
            MIN(date) AS date_min,

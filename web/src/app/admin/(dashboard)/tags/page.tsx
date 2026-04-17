@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { sql } from "@/lib/db";
 import { deleteCategory, upsertCategory } from "@/lib/admin-actions";
 import { getAllCategories, type CategoryRow } from "@/lib/category-copy";
@@ -23,6 +24,7 @@ export default async function AdminTagsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  await connection();
   const sp = await searchParams;
   const g = (k: string) => {
     const v = sp[k];

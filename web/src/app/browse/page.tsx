@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { AXES } from "@/lib/types";
 import { axisLabel, getLibraryStats } from "@/lib/videos";
 
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BrowseIndexPage() {
+  await connection();
   const stats = await getLibraryStats();
   return (
     <div>
