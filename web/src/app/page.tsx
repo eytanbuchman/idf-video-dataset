@@ -1,5 +1,7 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { JsonLd } from "@/components/json-ld";
 import { HeroStats } from "@/components/hero-stats";
 import { SearchFilters } from "@/components/search-filters";
 import { ResultsWithDrawer } from "@/components/results-with-drawer";
@@ -13,6 +15,7 @@ import {
 import { getAllVideos, getLibraryStats } from "@/lib/videos";
 import { buildTagIndex } from "@/lib/link-tags";
 import { AXES, AXIS_CONFIG, FLAG_CONFIG } from "@/lib/axes-config";
+import { absoluteUrl, homeMetadata, webSiteJsonLd } from "@/lib/seo";
 
 const PAGE_SIZE = 40;
 const INITIAL_LIMIT = 10;
@@ -50,6 +53,16 @@ function parseFilters(sp: Record<string, string | string[] | undefined>): {
       dateTo: g("to"),
     },
   };
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const stats = await getLibraryStats();
+  return homeMetadata({
+    total: stats.total,
+    dateMin: stats.dateMin,
+    dateMax: stats.dateMax,
+  });
 }
 
 export default async function HomePage({
@@ -93,6 +106,9 @@ export default async function HomePage({
 
   return (
     <div>
+      <JsonLd
+        data={webSiteJsonLd(`${absoluteUrl("/")}?q={search_term_string}`)}
+      />
       <HeroStats stats={stats} />
 
       <div className="mb-10">

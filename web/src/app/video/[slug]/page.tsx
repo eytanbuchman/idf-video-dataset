@@ -7,6 +7,7 @@ import { JsonLd } from "@/components/json-ld";
 import { CopyPageUrl } from "@/components/copy-page-url";
 import { getStreamUrl } from "@/lib/video-url";
 import { getSiteUrl } from "@/lib/site";
+import { videoMetadata } from "@/lib/seo";
 import { AXES, AXIS_CONFIG, FLAG_CONFIG } from "@/lib/axes-config";
 import { buildTagIndex, renderLinkedText } from "@/lib/link-tags";
 import {
@@ -28,18 +29,14 @@ function excerpt(text: string, max = 160): string {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const v = await getVideoBySlug(slug);
-  if (!v) return { title: "Not found" };
-  const title = excerpt(v.message_text, 72);
-  const description = excerpt(v.message_text, 155);
-  return {
-    title,
-    description,
-    openGraph: {
-      title,
-      description,
-      type: "video.other",
-    },
-  };
+  if (!v) return { title: "Not found", robots: { index: false } };
+  return videoMetadata({
+    pathname: `/video/${slug}`,
+    messageExcerpt: excerpt(v.message_text, 78),
+    theater: v.theater,
+    kind: v.kind,
+    date: v.date,
+  });
 }
 
 export default async function VideoPage({ params }: Props) {

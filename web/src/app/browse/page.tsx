@@ -2,13 +2,14 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { AXES, AXIS_CONFIG } from "@/lib/axes-config";
+import { browseIndexMetadata } from "@/lib/seo";
 import { getLibraryStats } from "@/lib/videos";
 
-export const metadata: Metadata = {
-  title: "Browse library",
-  description:
-    "Explore IDF video releases by theater, opponent, footage type, domain, or posture — pillar pages with full lists and filters.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const stats = await getLibraryStats();
+  return browseIndexMetadata(stats);
+}
 
 export default async function BrowseIndexPage() {
   await connection();

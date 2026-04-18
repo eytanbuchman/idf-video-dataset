@@ -8,6 +8,7 @@ import { ResultsWithDrawer } from "@/components/results-with-drawer";
 import { ResultsFallback } from "@/components/results-fallback";
 import { buildTagIndex } from "@/lib/link-tags";
 import { getCategoryCopy } from "@/lib/category-copy";
+import { categoryMetadata, SEO_SITE_NAME, clampMetaDescription } from "@/lib/seo";
 import { filterByPillar, sortByDateDesc } from "@/lib/filter-videos";
 import { getSiteUrl } from "@/lib/site";
 import type { Axis } from "@/lib/types";
@@ -28,18 +29,24 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { axis: raw, categorySlug } = await params;
-  if (!isAxis(raw)) return { title: "Not found" };
+  if (!isAxis(raw)) return { title: "Not found", robots: { index: false } };
   const axis = raw as Axis;
+  await connection();
   const videos = await getAllVideos();
   const list = filterByPillar(videos, axis, categorySlug);
+  if (list.length === 0) {
+    return { title: "Not found", robots: { index: false } };
+  }
   const label =
     list[0] != null ? getLabelForAxis(list[0], axis) : categorySlug;
-  const title = `${label} · ${axisLabel(axis)}`;
-  return {
-    title,
-    description: `${list.length} IDF video clips tagged "${label}" under ${axisLabel(axis).toLowerCase()}. Stream or export metadata.`,
-    openGraph: { title, description: `${list.length} clips` },
-  };
+  const copy = await getCategoryCopy(axis, categorySlug, label);
+  return categoryMetadata({
+    pathname: `/browse/${axis}/${categorySlug}`,
+    label,
+    axisLabel: axisLabel(axis),
+    clipCount: list.length,
+    intro: copy.intro,
+  });
 }
 
 export default async function PillarPage({ params, searchParams }: Props) {
@@ -99,12 +106,23 @@ export default async function PillarPage({ params, searchParams }: Props) {
     ],
   };
 
+  const pageUrl = `${base}/browse/${axis}/${categorySlug}`;
   const collectionLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
+    "@id": `${pageUrl}#collection`,
     name: `${label} — ${axisLabel(axis)}`,
-    description: `IDF video dataset: ${list.length} clips.`,
+    url: pageUrl,
+    description: clampMetaDescription(
+      `${list.length} clips. ${copy.intro}`,
+      300,
+    ),
     numberOfItems: list.length,
+    isPartOf: {
+      "@type": "WebSite",
+      name: SEO_SITE_NAME,
+      url: base,
+    },
   };
 
   return (

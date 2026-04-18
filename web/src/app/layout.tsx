@@ -4,6 +4,7 @@ import "./globals.css";
 import { AmbientMesh } from "@/components/ambient-mesh";
 import { SiteHeader } from "@/components/site-header";
 import { getSiteUrl } from "@/lib/site";
+import { SEO_SITE_NAME } from "@/lib/seo";
 
 const display = Instrument_Serif({
   subsets: ["latin"],
@@ -28,22 +29,25 @@ const siteUrl = getSiteUrl();
 export const metadata: Metadata = {
   metadataBase: siteUrl,
   title: {
-    default: "IDF Video Dataset",
-    template: "%s · IDF Video Dataset",
+    default: `${SEO_SITE_NAME} — Search official IDF military footage`,
+    template: `%s · ${SEO_SITE_NAME}`,
   },
   description:
-    "Search the IDF video database: filter by theater, opponent, and footage type. Stream from official CDN or export metadata as CSV.",
+    "Search thousands of indexed IDF spokesperson videos: filter by theater (Gaza, Lebanon, Judea & Samaria), opponent, footage type, domain, and posture. Stream CDN URLs or export CSV metadata.",
+  applicationName: SEO_SITE_NAME,
+  referrer: "strict-origin-when-cross-origin",
+  robots: { index: true, follow: true },
   openGraph: {
     type: "website",
     locale: "en_US",
-    siteName: "IDF Video Dataset",
+    siteName: SEO_SITE_NAME,
     url: siteUrl,
   },
   twitter: {
     card: "summary_large_image",
-    title: "IDF Video Dataset",
+    title: `${SEO_SITE_NAME} — Official IDF video search`,
     description:
-      "Find official IDF spokesperson footage and metadata for research and reporting.",
+      "Browse and filter official Israel Defense Forces spokesperson footage with structured metadata for journalists and researchers.",
   },
 };
 

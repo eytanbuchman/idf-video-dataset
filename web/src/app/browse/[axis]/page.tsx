@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { axisHubMetadata } from "@/lib/seo";
 import { axisLabel, isAxis, getLibraryStats } from "@/lib/videos";
 import type { Axis } from "@/lib/types";
 
@@ -9,12 +10,12 @@ type Props = { params: Promise<{ axis: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { axis: raw } = await params;
-  if (!isAxis(raw)) return { title: "Not found" };
+  if (!isAxis(raw)) return { title: "Not found", robots: { index: false } };
   const axis = raw as Axis;
-  return {
-    title: `${axisLabel(axis)} categories`,
-    description: `Index of all ${axisLabel(axis).toLowerCase()} values in the IDF video dataset.`,
-  };
+  await connection();
+  const stats = await getLibraryStats();
+  const list = stats.by[axis];
+  return axisHubMetadata(axisLabel(axis), axis, list.length);
 }
 
 export default async function AxisHubPage({ params }: Props) {
